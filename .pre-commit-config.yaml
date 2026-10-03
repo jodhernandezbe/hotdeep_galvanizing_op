@@ -1,0 +1,56 @@
+---
+repos:
+  - repo: local
+    hooks:
+      - id: pytest
+        entry: bash -c 'poetry run pytest --verbose || [ "$?" -eq 5 ]'
+        name: pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: pyright
+        pass_filenames: true
+        files: '^src/.+\.pyi?$'
+        language: system
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-docstring-first
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+  - repo: https://github.com/ambv/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+  - repo: https://github.com/timothycrosley/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [--strict, -c=./.yamllint]
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        files: ^src/

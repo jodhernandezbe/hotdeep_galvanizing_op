@@ -1,0 +1,110 @@
+[project]
+name = "hotdeep-galvanizing-op"
+version = "0.1.0"
+description = "Hot-dip galvanizing process simulation and GREENSCOPE sustainability assessment for robust optimization under uncertainty (Python port of the 2018 UNAL master's thesis models)"
+authors = [
+    {name = "Jose D. Hernandez-Betancur", email = "jodhernandezbemj@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+keywords = [
+    "hot-dip-galvanizing",
+    "process-simulation",
+    "sustainability",
+    "GREENSCOPE",
+    "fuzzy-AHP",
+    "monte-carlo",
+    "optimization-under-uncertainty",
+]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "pandas (>=2.2.0,<4.0.0)",
+    "numpy (>=1.26.0,<3.0.0)",
+    "python-dotenv (>=1.0.0,<2.0.0)",
+    "scipy>=1.18.1",
+    "pymoo (>=0.6.1,<0.7.0)",
+    "matplotlib (>=3.8.0,<4.0.0)",
+    "joblib (>=1.3.0,<2.0.0)",
+]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/jodhernandezbe/hotdeep-galvanizing-op"
+
+[tool.poetry]
+packages = [{include = "src"}]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "black (>=24.8.0,<27.0.0)",
+    "pre-commit (>=4.6.0,<5.0.0)",
+    "flake8 (>=7.1.0,<8.0.0)",
+    "isort (>=5.13.0,<9.0.0)",
+    "interrogate (>=1.7.0,<2.0.0)",
+    "pyright (>=1.1.408,<2.0.0)",
+    "pytest (>=8.0.0,<10.0.0)",
+    "bandit (>=1.7.9,<2.0.0)",
+    "pydocstyle (>=6.3.0,<7.0.0)",
+    "yamllint (>=1.35.0,<2.0.0)",
+    "defusedxml (>=0.7.1,<0.8.0)"
+]
+
+[tool.black]
+line-length = 128
+include = '\.pyi?$'
+exclude = '''
+/(
+	\.git
+| \.hg
+| \.mypy_cache
+| \.tox
+| \.venv
+| _build
+| buck-out
+| build
+)/
+'''
+
+[tool.interrogate]
+ignore-init-method = true
+ignore-init-module = false
+ignore-magic = false
+ignore-semiprivate = false
+ignore-private = false
+ignore-property-decorators = false
+ignore-module = true
+ignore-nested-functions = false
+ignore-nested-classes = true
+ignore-setters = false
+fail-under = 95
+exclude = ["setup.py", "docs", "build"]
+ignore-regex = ["^get$", "^mock_.*", ".*BaseClass.*"]
+verbose = 0
+quiet = false
+whitelist-regex = []
+color = true
+
+[tool.pyright]
+include = ["src"]
+extraPaths = ["src"]
+exclude = ["tests"]
+typeCheckingMode = "standard"
+pythonVersion = "3.12"
+reportMissingImports = true
+reportMissingTypeStubs = false
+stubPath = './typestubs'
+venvPath = '.'
+venv = '.venv'
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
