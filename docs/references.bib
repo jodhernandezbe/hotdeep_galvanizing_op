@@ -1,0 +1,530 @@
+% References for the manuscript. Companion of docs/LITERATURE.md (which says what each entry supports).
+%
+% Verification status (2026-10-02):
+%   [seen]   found by web search in this project; metadata taken from the search result, full text NOT read.
+%   [memory] bibliographic data written from memory of the standard reference; verify DOI/pages before submitting.
+% Patents, vendor pages, market-data pages and forum Q&A are fine as evidence in the repo, but prefer peer-reviewed
+% primary sources in the paper. Entries marked "note = {weak source}" should be replaced if possible.
+
+% ---------------------------------------------------------------- thesis (source of the models)
+@mastersthesis{hernandez2018thesis,
+  author  = {Hern{\'a}ndez Betancur, Jos{\'e} Daniel},
+  title   = {Detecci{\'o}n de los puntos cr{\'i}ticos del proceso de galvanizado por inmersi{\'o}n en caliente: un enfoque hacia la sostenibilidad y el desarrollo sostenible},
+  school  = {Universidad Nacional de Colombia},
+  year    = {2018},
+  month   = may,
+  type    = {Tesis de Maestr{\'i}a},
+  note    = {Advisors: Hugo Fernando Hern{\'a}ndez Garc{\'i}a and Luz Marina Ocampo Carmona. Source of the MATLAB models and of the 2016--2018 prices. [seen: repository record, abstract read; thesis PDF text not re-read here]},
+  url     = {https://repositorio.unal.edu.co/handle/unal/63201}
+}
+
+@article{hernandez2019holistic,
+  author  = {Hern{\'a}ndez-Betancur, Jose D. and Hern{\'a}ndez, Hugo F. and Ocampo-Carmona, Luz M.},
+  title   = {A holistic framework for assessing hot-dip galvanizing process sustainability},
+  journal = {Journal of Cleaner Production},
+  volume  = {206},
+  pages   = {755--766},
+  year    = {2019},
+  doi     = {10.1016/j.jclepro.2018.09.177},
+  note    = {[Crossref verified; full text read (PDF in manuscript/references)] Journal-article version of the framework implemented in this repository (PII S0959652618329068). Crossref lists the issue as January 2019; the article appeared online in 2018}
+}
+
+% ---------------------------------------------------------------- methods
+@article{deb2002nsga2,
+  author  = {Deb, Kalyanmoy and Pratap, Amrit and Agarwal, Sameer and Meyarivan, T.},
+  title   = {A fast and elitist multiobjective genetic algorithm: {NSGA-II}},
+  journal = {IEEE Transactions on Evolutionary Computation},
+  volume  = {6},
+  number  = {2},
+  pages   = {182--197},
+  year    = {2002},
+  doi     = {10.1109/4235.996017},
+  note    = {[memory]}
+}
+
+@article{blank2020pymoo,
+  author  = {Blank, Julian and Deb, Kalyanmoy},
+  title   = {pymoo: Multi-Objective Optimization in {P}ython},
+  journal = {IEEE Access},
+  volume  = {8},
+  pages   = {89497--89509},
+  year    = {2020},
+  doi     = {10.1109/ACCESS.2020.2990567},
+  note    = {[memory]}
+}
+
+@article{chang1996fuzzyahp,
+  author  = {Chang, Da-Yong},
+  title   = {Applications of the extent analysis method on fuzzy {AHP}},
+  journal = {European Journal of Operational Research},
+  volume  = {95},
+  number  = {3},
+  pages   = {649--655},
+  year    = {1996},
+  doi     = {10.1016/0377-2217(95)00300-2},
+  note    = {[memory]}
+}
+
+@article{ruizmercado2012greenscope1,
+  author  = {Ruiz-Mercado, Gerardo J. and Smith, Raymond L. and Gonzalez, Michael A.},
+  title   = {Sustainability Indicators for Chemical Processes: {I}. Taxonomy},
+  journal = {Industrial \& Engineering Chemistry Research},
+  volume  = {51},
+  number  = {5},
+  pages   = {2309--2328},
+  year    = {2012},
+  doi     = {10.1021/ie102116e},
+  note    = {[memory] GREENSCOPE}
+}
+
+@article{ruizmercado2012greenscope2,
+  author  = {Ruiz-Mercado, Gerardo J. and Smith, Raymond L. and Gonzalez, Michael A.},
+  title   = {Sustainability Indicators for Chemical Processes: {II}. Data Needs},
+  journal = {Industrial \& Engineering Chemistry Research},
+  volume  = {51},
+  number  = {5},
+  pages   = {2329--2353},
+  year    = {2012},
+  doi     = {10.1021/ie200755k},
+  note    = {[memory] GREENSCOPE}
+}
+
+@standard{iso1461,
+  organization = {{ISO}},
+  title        = {Hot dip galvanized coatings on fabricated iron and steel articles --- Specifications and test methods},
+  number       = {ISO 1461},
+  note         = {[memory] Adopted in Spain as UNE-EN ISO 1461; verify the edition year (2009 or 2022) used in the thesis}
+}
+
+% ---------------------------------------------------------------- fluxing bath: iron limit, regeneration
+@misc{finishing2025fluxiron,
+  title        = {Galvanizing Flux Bath Iron Contamination: Safe Fixes Guide},
+  howpublished = {\url{https://www.finishing.com/423/25.shtml}},
+  note         = {[seen] weak source (forum Q\&A): preflux contamination limited to about 0.5\,\% Fe; find the primary source. Accessed 2026-10-02}
+}
+
+@misc{metchem2025fluxpress,
+  title        = {Flux Filter Press \& Regeneration System and Hot Dip Galvanizing},
+  author       = {{Metchem}},
+  howpublished = {\url{https://metchem.com/flux-press-regeneration-system-hot-dip-galvanizing/}},
+  note         = {[seen] weak source (vendor page). Accessed 2026-10-02}
+}
+
+@misc{aga2025fluxquality,
+  author       = {{American Galvanizers Association}},
+  title        = {Flux Quality: Concentration, Density ({B}aum{\'e}), Flux Ratio, p{H}},
+  howpublished = {\url{https://galvanizeit.org/knowledgebase/article/flux-quality-concentration-density-baume-flux-ratio-ph}},
+  note         = {[seen] trade association. Accessed 2026-10-02}
+}
+
+@misc{aga2025fluxph,
+  author       = {{American Galvanizers Association}},
+  title        = {Monitoring p{H} of the Preflux Solution},
+  howpublished = {\url{https://galvanizeit.org/knowledgebase/article/monitoring-ph-of-the-preflux-solution}},
+  note         = {[seen] trade association. Accessed 2026-10-02}
+}
+
+@patent{us10316400,
+  number       = {US 10316400},
+  title        = {Systems and methods for removing impurities from galvanizing flux solution},
+  howpublished = {\url{https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/10316400}},
+  note         = {[seen] patent: dumping flux baths as hazardous waste is prohibitively expensive; regeneration instead. Inventors/year to be completed}
+}
+
+@patent{us11091828,
+  number       = {US 11091828 B2},
+  title        = {Systems for removing impurities from galvanizing flux solution},
+  howpublished = {\url{https://patents.google.com/patent/US11091828}},
+  note         = {[seen] patent. Inventors/year to be completed}
+}
+
+@patent{us6802912,
+  number       = {US 6802912},
+  title        = {Deferrizing flux salt composition for flux baths},
+  howpublished = {\url{https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/6802912}},
+  note         = {[seen] patent: about 1 g Fe forms about 25 g hard zinc. Inventors/year to be completed}
+}
+
+@patent{ep0722001,
+  number       = {EP 0722001},
+  title        = {Regeneration of a flux bath by continuous flux stream withdrawal},
+  howpublished = {\url{https://data.epo.org/publication-server/rest/v1.2/publication-dates/19980617/patents/EP0722001NWB1/document.html}},
+  note         = {[seen: docs/MATLAB_PORT_NOTES.md] patent. Inventors to be completed}
+}
+
+@misc{researchgate2013fluxcontrol,
+  title        = {Composition, testing, and control of hot dip galvanizing flux},
+  howpublished = {\url{https://www.researchgate.net/publication/240387651_Composition_testing_and_control_of_hot_dip_galvanizing_flux}},
+  note         = {[seen] candidate primary source, not read; complete authors/journal/year from the full text}
+}
+
+@article{regelrosocka2007pickling,
+  author  = {Regel-Rosocka, Magdalena},
+  title   = {(title to be confirmed; appeared in a search on pickling-liquor regeneration)},
+  journal = {Polish Journal of Chemical Technology},
+  volume  = {2},
+  year    = {2007},
+  url     = {https://yadda.icm.edu.pl/baztech/element/bwmeta1.element.baztech-article-BPS2-0045-0038/c/Polish_Journal_of_Chemical_Technology_2_2007_Regel-Rosocka.pdf},
+  note    = {[seen] relevance NOT verified; do not cite until read}
+}
+
+% ---------------------------------------------------------------- pickling bath (HCl) exhaustion
+@patent{us4209489,
+  number       = {US 4209489},
+  title        = {Apparatus for treating spent hydrochloric acid},
+  howpublished = {\url{https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/4209489}},
+  note         = {[seen] patent: pickle liquor replaced at about 100--160 g/L Fe with free acid near 45--50 g/L. Inventors/year to be completed}
+}
+
+% ---------------------------------------------------------------- prices and cost indices (2025 scenario)
+@misc{ilzsg2024factbook,
+  author       = {{International Lead and Zinc Study Group}},
+  title        = {The World Zinc Factbook 2024},
+  year         = {2024},
+  howpublished = {\url{https://www.ilzsg.org/wp-content/uploads/SitePDFs/The\%20World\%20Zinc\%20Factbook\%202024.pdf}},
+  note         = {[read] primary source: galvanizing 60\,\% of zinc usage by first use; construction 50\,\%, transport 20\,\%, infrastructure 15\,\% by end use (p. 36); batch (general) hot-dip galvanizing is fragmented (p. 40). Year of the shares not printed on the page}
+}
+
+@misc{metalcharts2025zinc,
+  title        = {Zinc price history 2025},
+  author       = {{metalcharts.org}},
+  howpublished = {\url{https://metalcharts.org/zinc-price-history/2025}},
+  note         = {[seen] weak source (aggregator), superseded: the zinc price now comes from the USGS Mineral Commodity Summaries 2026 (usgs2026zinc), which reports the 2025 LME cash price as 130 cents per pound}
+}
+
+@misc{ilzsg2025outlook,
+  author       = {{International Lead and Zinc Study Group}},
+  title        = {Market Outlook, October 2025},
+  howpublished = {\url{https://www.ilzsg.org/wp-content/uploads/5.MEETINGS\%20PRESENTATIONS/202510_ILZSG_Joao\%20Jorge_Market\%20Outlook\%20October\%202025\%20SLIDES.pdf}},
+  note         = {[seen] candidate primary source for zinc price, not read}
+}
+
+@misc{imarc2025zncl2,
+  author       = {{IMARC Group}},
+  title        = {Zinc Chloride Prices in the {USA} Stand at {USD} 1,296/{MT} Amid Stable Industrial Demand},
+  howpublished = {\url{https://www.imarcgroup.com/news/zinc-chloride-price-index}},
+  note         = {[read] market-report page: USA Q3 2025 1296 USD/MT (Germany 1084; Brazil 1200); region and quarter only, grade not stated}
+}
+
+@misc{imarc2025nh4cl,
+  author       = {{IMARC Group}},
+  title        = {Ammonium Chloride Prices, Trend, Chart, Demand, Market Analysis, News, Historical and Forecast Data Report 2025 Edition},
+  howpublished = {\url{https://www.imarcgroup.com/ammonium-chloride-pricing-report}},
+  note         = {[read] market-report page: North America 0.26 to 0.28 USD/kg (2025 to Sep 2026), Europe 0.52 to 0.55, Northeast Asia 0.08; grade not stated}
+}
+
+@misc{intratec2025hcl,
+  author       = {{Intratec}},
+  title        = {Hydrochloric Acid Prices},
+  howpublished = {\url{https://www.intratec.us/chemical-markets/hydrochloric-acid-price}},
+  note         = {[read] market-data page: the US series is an import transaction price (cif) with no stated concentration; China is 31\,\% HCl (exw), Europe 33\,\% (ddp Germany). Not used for the price; shows that the US basis is unspecified}
+}
+
+@misc{imarc2025hcl,
+  author       = {{IMARC Group}},
+  title        = {Hydrochloric Acid Price Index, Trend and Forecast},
+  year         = {2026},
+  howpublished = {\url{https://www.imarcgroup.com/hydrochloric-acid-pricing-report}},
+  note         = {[read] market-report page: North America 243.84 USD/MT in December 2025 (by-product acid); concentration not stated}
+}
+
+@misc{intratec2025nh4oh,
+  author       = {{Intratec}},
+  title        = {Ammonium Hydroxide Prices},
+  howpublished = {\url{https://www.intratec.us/chemical-markets/ammonium-hydroxide-price}},
+  note         = {[seen] market-data page: USA 173 USD/t (Sep 2025; 125 in May 2025), Europe 178 USD/t (Sep 2025); concentration basis not stated, assumed commercial aqueous ammonia. Used for the unit-corrected NH4OH price. Accessed 2026-10-03}
+}
+
+@misc{argus2025caustic,
+  author       = {{Argus Media}},
+  title        = {Chlor-alkali market reports (caustic soda, {US} {G}ulf export)},
+  howpublished = {\url{https://view.argusmedia.com/rs/584-BUW-606/images/FER-20251114chlor-alkali.pdf?version=0}},
+  note         = {[read] Argus Chlor-Alkali and Derivatives, issue 25-46, 14 November 2025: US Gulf export 340 to 400 USD per dry metric tonne (dmt) FOB; domestic barge 440 to 475 USD per dry short ton; NW Europe 380 to 430 USD/dmt. Quoted per dry tonne, so a 50\,\% solution is half per tonne}
+}
+
+@misc{cepci2017,
+  author       = {{Chemical Engineering magazine}},
+  title        = {Chemical Engineering Plant Cost Index ({CEPCI}) annual values},
+  howpublished = {\url{https://www.chemengonline.com/cepci}},
+  note         = {[seen] 2017 annual average 567.5; 2024 annual value not retrieved}
+}
+
+@misc{dane2025smmlv,
+  author       = {{Gobierno de Colombia}},
+  title        = {Decreto 1572 de 2024: salario m{\'i}nimo mensual legal vigente 2025},
+  note         = {[seen via secondary pages] SMMLV 2025 = COP 1,423,500 (+9.5\,\%); primary decree text not read}
+}
+
+@misc{elcolombiano2025gas,
+  author       = {{El Colombiano}},
+  title        = {Tarifas de gas natural en 2025: {B}ogot{\'a} y {M}edell{\'i}n las m{\'a}s afectadas},
+  howpublished = {\url{https://www.elcolombiano.com/m/negocios/tarifas-de-gas-natural-en-2025-bogota-y-medellin-las-mas-afectadas-por-que-subieron-las-tarifas-HF26545507}},
+  note         = {[seen] press: gas purchase cost in Medell{\'i}n 6.47 to 9.34 USD/MBTU (Dec 2024 to Jan 2025); not the full industrial tariff}
+}
+
+% ---------------------------------------------------------------- manuscript introduction and methods (added 2026-10-03)
+@techreport{koch2016corrosion,
+  author       = {Koch, Gerhardus and Varney, Jeff and Thompson, Neil and Moghissi, Oliver and Gould, Melissa and Payer, Joe},
+  title        = {International Measures of Prevention, Application, and Economics of Corrosion Technologies Study},
+  institution  = {NACE International},
+  year         = {2016},
+  note         = {[memory] authors and title written from memory; the US\$2.5 trillion (3.4\,\% of GDP) and 15--35\,\% savings figures were seen in several secondary pages. Verify against the report}
+}
+
+@misc{worldsteel2025totals,
+  author       = {{World Steel Association}},
+  title        = {December 2024 crude steel production and 2024 global crude steel production totals},
+  year         = {2025},
+  howpublished = {\url{https://worldsteel.org/media/press-releases/2025/december-2024-crude-steel-production-and-2024-global-totals/}},
+  note         = {[seen] figures (1,882.6 Mt world; China 1,005.1; India 149.6; Japan 84.0; USA 79.5) read from search results; the page itself is not machine-readable, check on the site}
+}
+
+@misc{usgs2026zinc,
+  author       = {{U.S. Geological Survey}},
+  title        = {Zinc. In Mineral commodity summaries 2026},
+  year         = {2026},
+  howpublished = {\url{https://pubs.usgs.gov/periodicals/mcs2026/mcs2026-zinc.pdf}},
+  note         = {[read] primary source: world mine production 13,000 kt in 2025e (China 4,100; Peru 1,500; Australia 1,100); net import reliance for refined zinc 73\,\% in the USA; galvanized steel is the leading use}
+}
+
+@misc{usgs2025critical,
+  author       = {{U.S. Geological Survey}},
+  title        = {Interior Department releases final 2025 list of critical minerals},
+  year         = {2025},
+  howpublished = {\url{https://www.usgs.gov/news/science-snippet/interior-department-releases-final-2025-list-critical-minerals}},
+  note         = {[seen] via search results (60 minerals, zinc retained); the page returned HTTP 403 to automated access. Prefer the Federal Register notice}
+}
+
+@article{akamphon2012zinc,
+  author  = {Akamphon, Sappinandana and Sukkasi, Sittha and Boonyongmaneerat, Yuttanant},
+  title   = {Reduction of zinc consumption with enhanced corrosion protection in hot-dip galvanized coatings: A process-based cost analysis},
+  journal = {Resources, Conservation and Recycling},
+  volume  = {58},
+  pages   = {1--7},
+  year    = {2012},
+  doi     = {10.1016/j.resconrec.2011.10.001},
+  note    = {[Crossref verified]}
+}
+
+@article{kong2010cleaner,
+  author  = {Kong, Gang and White, Rob},
+  title   = {Toward cleaner production of hot dip galvanizing industry in China},
+  journal = {Journal of Cleaner Production},
+  volume  = {18},
+  number  = {10--11},
+  pages   = {1092--1099},
+  year    = {2010},
+  doi     = {10.1016/j.jclepro.2010.03.006},
+  note    = {[Crossref verified]}
+}
+
+@article{fresner2007zero,
+  author  = {Fresner, Johannes and Schnitzer, Hans and Gwehenberger, Gernot and Planasch, Mikko and Brunner, Christoph and Taferner, Karin and Mair, Josef},
+  title   = {Practical experiences with the implementation of the concept of zero emissions in the surface treatment industry in Austria},
+  journal = {Journal of Cleaner Production},
+  volume  = {15},
+  number  = {13--14},
+  pages   = {1228--1239},
+  year    = {2007},
+  doi     = {10.1016/j.jclepro.2006.07.024},
+  note    = {[Crossref verified] the statement that environmental solutions can be feasible but not economically viable comes from the description in Hernandez-Betancur et al. (2019); read the article}
+}
+
+@article{hegyi2015rebars,
+  author  = {Hegyi, Andreea and P{\u{a}}str{\u{a}}v, M. and Rus, M.},
+  title   = {Environmental and economic aspects of anticorrosion protection by hot-dip galvanized method rebars in concrete},
+  journal = {Journal of Applied Engineering Sciences},
+  volume  = {5},
+  number  = {1},
+  pages   = {23--30},
+  year    = {2015},
+  doi     = {10.1515/jaes-2015-0003},
+  note    = {[Crossref verified]}
+}
+
+@article{tongpool2010steel,
+  author  = {Tongpool, Rungnapa and Jirajariyavech, Athiwatr and Yuvaniyama, Chantana and Mungcharoen, Thumrongrut},
+  title   = {Analysis of steel production in Thailand: Environmental impacts and solutions},
+  journal = {Energy},
+  volume  = {35},
+  number  = {10},
+  pages   = {4192--4200},
+  year    = {2010},
+  doi     = {10.1016/j.energy.2010.07.003},
+  note    = {[Crossref verified] the galvanizing stage is mentioned in Hernandez-Betancur et al. (2019); read the article}
+}
+
+@article{lobato2015solid,
+  author  = {Lobato, Nat{\'a}lia Cristina Candian and Villegas, Edwin Auza and Mansur, Marcelo Borges},
+  title   = {Management of solid wastes from steelmaking and galvanizing processes: A brief review},
+  journal = {Resources, Conservation and Recycling},
+  volume  = {102},
+  pages   = {49--57},
+  year    = {2015},
+  doi     = {10.1016/j.resconrec.2015.05.025},
+  note    = {[Crossref verified] spent pickling solutions are attributed to Regel-Rosocka et al. (2007) in the 2019 paper}
+}
+
+@article{smith2014decision,
+  author  = {Smith, Raymond L. and Ruiz-Mercado, Gerardo J.},
+  title   = {A method for decision making using sustainability indicators},
+  journal = {Clean Technologies and Environmental Policy},
+  volume  = {16},
+  number  = {4},
+  pages   = {749--755},
+  year    = {2014},
+  doi     = {10.1007/s10098-013-0684-5},
+  note    = {[Crossref verified] online 2013, volume year 2014}
+}
+
+@article{vyhmeister2018biojet,
+  author  = {Vyhmeister, Eduardo and Ruiz-Mercado, Gerardo J. and Torres, Ana I. and Posada, John A.},
+  title   = {Optimization of multi-pathway production chains and multi-criteria decision-making through sustainability evaluation: a biojet fuel production case study},
+  journal = {Clean Technologies and Environmental Policy},
+  volume  = {20},
+  number  = {7},
+  pages   = {1697--1719},
+  year    = {2018},
+  doi     = {10.1007/s10098-018-1576-5},
+  note    = {[Crossref verified] the use of GREENSCOPE indicators as objectives comes from a search snippet; read the article}
+}
+
+@article{kleywegt2002saa,
+  author  = {Kleywegt, Anton J. and Shapiro, Alexander and Homem-de-Mello, Tito},
+  title   = {The sample average approximation method for stochastic discrete optimization},
+  journal = {SIAM Journal on Optimization},
+  volume  = {12},
+  number  = {2},
+  pages   = {479--502},
+  year    = {2002},
+  doi     = {10.1137/S1052623499363220},
+  note    = {[Crossref verified]}
+}
+
+@book{law2015simulation,
+  author    = {Law, Averill M.},
+  title     = {Simulation Modeling and Analysis},
+  edition   = {5},
+  publisher = {McGraw-Hill Education},
+  year      = {2015},
+  note      = {[memory] verify edition and publisher}
+}
+
+@article{mckay1979lhs,
+  author  = {McKay, M. D. and Beckman, R. J. and Conover, W. J.},
+  title   = {Comparison of three methods for selecting values of input variables in the analysis of output from a computer code},
+  journal = {Technometrics},
+  volume  = {21},
+  number  = {2},
+  pages   = {239--245},
+  year    = {1979},
+  doi     = {10.1080/00401706.1979.10489755},
+  note    = {[Crossref verified]}
+}
+
+@article{zitzler1999hv,
+  author  = {Zitzler, Eckart and Thiele, Lothar},
+  title   = {Multiobjective evolutionary algorithms: a comparative case study and the strength {P}areto approach},
+  journal = {IEEE Transactions on Evolutionary Computation},
+  volume  = {3},
+  number  = {4},
+  pages   = {257--271},
+  year    = {1999},
+  doi     = {10.1109/4235.797969},
+  note    = {[Crossref verified]}
+}
+
+@article{zimmermann1978fuzzy,
+  author  = {Zimmermann, H.-J.},
+  title   = {Fuzzy programming and linear programming with several objective functions},
+  journal = {Fuzzy Sets and Systems},
+  volume  = {1},
+  number  = {1},
+  pages   = {45--55},
+  year    = {1978},
+  doi     = {10.1016/0165-0114(78)90031-3},
+  note    = {[Crossref verified]}
+}
+
+% ---------------------------------------------------------------- literature on optimization / assessment in galvanizing (search of 2026-10-03)
+@article{wang2018zinclayer,
+  author  = {Wang, Yi},
+  title   = {Study on influence factors of zinc layer thickness via response surface method, {T}aguchi method and genetic algorithm},
+  journal = {Industrial Engineering \& Management},
+  volume  = {7},
+  number  = {1},
+  year    = {2018},
+  doi     = {10.4172/2169-0316.1000245},
+  note    = {[Crossref verified; abstract read] air-knife parameters of a strip line (continuous galvanizing)}
+}
+
+@article{costa2019dp,
+  author  = {Costa, Patricia and Altamirano, Gerardo and Salinas, Armando and Gonz{\'a}lez-Gonz{\'a}lez, David S. and Goodwin, Frank},
+  title   = {Optimization of the continuous galvanizing heat treatment process in ultra-high strength dual phase steels using a multivariate model},
+  journal = {Metals},
+  volume  = {9},
+  number  = {6},
+  pages   = {703},
+  year    = {2019},
+  doi     = {10.3390/met9060703},
+  note    = {[Crossref verified; abstract read]}
+}
+
+@article{resendiz2021dp,
+  author  = {Res{\'e}ndiz-Flores, Edgar O. and Altamirano-Guerrero, Gerardo and Costa, Patricia S. and Salas-Reyes, Antonio E. and Salinas-Rodr{\'i}guez, Armando and Goodwin, Frank},
+  title   = {Optimal design of hot-dip galvanized {DP} steels via artificial neural networks and multi-objective genetic optimization},
+  journal = {Metals},
+  volume  = {11},
+  number  = {4},
+  pages   = {578},
+  year    = {2021},
+  doi     = {10.3390/met11040578},
+  note    = {[Crossref verified; abstract read]}
+}
+
+@article{crisan2023pickt,
+  author  = {Cri{\c{s}}an, Claudia Alice and Timi{\c{s}}, Elisabeta Cristina and Verme{\c{s}}an, Ho{\c{r}}iu},
+  title   = {{PickT}: A decision-making tool for the optimal pickling process operation},
+  journal = {Materials},
+  volume  = {16},
+  number  = {16},
+  pages   = {5567},
+  year    = {2023},
+  doi     = {10.3390/ma16165567},
+  note    = {[Crossref verified; abstract read] steel pickling in HCl, laboratory data}
+}
+
+@article{arguillarena2023circular,
+  author  = {Arguillarena, Andrea and Margallo, Mar{\'i}a and Arruti-Fern{\'a}ndez, Axel and Pinedo, Javier and G{\'o}mez, Pedro and Ortiz, Inmaculada and Urtiaga, Ane},
+  title   = {Circular economy in hot-dip galvanizing with zinc and iron recovery from spent pickling acids},
+  journal = {RSC Advances},
+  volume  = {13},
+  number  = {10},
+  pages   = {6481--6489},
+  year    = {2023},
+  doi     = {10.1039/d2ra08195d},
+  note    = {[Crossref verified; abstract read]}
+}
+
+@article{arguillarena2022lca,
+  author  = {Arguillarena, Andrea and Margallo, Mar{\'i}a and Irabien, {\'A}ngel and Urtiaga, Ane},
+  title   = {Life cycle assessment of zinc and iron recovery from spent pickling acids by membrane-based solvent extraction and electrowinning},
+  journal = {Journal of Environmental Management},
+  volume  = {318},
+  pages   = {115567},
+  year    = {2022},
+  doi     = {10.1016/j.jenvman.2022.115567},
+  note    = {[Crossref verified; abstract not read]}
+}
+
+@article{lorenz2023waste,
+  author  = {Lorenz, Manuel and Seitfudem, Georg and Randazzo, Serena and Gueccia, Rosa and Gehring, Florian and Prenzel, Tobias M.},
+  title   = {Combining membrane and zero brine technologies in waste acid treatment for a circular economy in the hot-dip galvanizing industry: A life cycle perspective},
+  journal = {Journal of Sustainable Metallurgy},
+  volume  = {9},
+  number  = {2},
+  pages   = {537--549},
+  year    = {2023},
+  doi     = {10.1007/s40831-023-00668-3},
+  note    = {[Crossref verified; abstract read]}
+}

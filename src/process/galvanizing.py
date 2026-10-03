@@ -1,0 +1,211 @@
+"""Hot-dip galvanizing bath: coating thickness, zinc losses and bath energy balance.
+
+Purpose: kinetic coating-thickness model (silicon-dependent), dross/ash generation and zinc-bath heat (thesis annex D.3).
+Author: Jose D. Hernandez-Betancur
+Date: 2026-10-02
+"""
+
+from dataclasses import dataclass
+from typing import Final
+
+import numpy as np
+
+from src.common.constants import MW_ZN, STEEL_HEAT_CAPACITY, ZINC_DENSITY
+from src.process.drying import DRYING_TEMPERATURE_C
+
+BATH_TEMPERATURE_MEAN_C: Final = 450.0
+BATH_TEMPERATURE_STD_C: Final = 1.6667
+BATH_LOSS_REFERENCE_C: Final = 435.0
+BATH_VOLUME_FACTOR: Final = 0.8 * 7
+BATH_DEPTH_RANGE_M: Final = (1.6, 1.8)
+MOLTEN_ZINC_DENSITY: Final = 6430.0
+COATING_ZINC_KG_PER_M2_UM: Final = ZINC_DENSITY * 1e-6
+DROSS_ASH_MEAN_PCT: Final = 0.75
+DROSS_ASH_STD_PCT: Final = 0.0833
+DROSS_ZINC_MEAN_PCT: Final = 95.0
+DROSS_ZINC_STD_PCT: Final = 0.3333
+ASH_ZINC_MEAN_PCT: Final = 72.5
+ASH_ZINC_STD_PCT: Final = 4.1667
+ZINC_OXIDE_MW: Final = 81.41
+THICKNESS_STANDARD_UM: Final = ((1.5, 35.0), (3.0, 45.0), (6.0, 55.0))
+THICKNESS_STANDARD_THICK_UM: Final = 70.0
+
+
+@dataclass(frozen=True)
+class GalvanizingBath:
+    """State of the molten zinc bath.
+
+    Attributes:
+        initial_mass_kg: Mass of zinc initially in the kettle [kg].
+        temperature_c: Current bath temperature [degC].
+    """
+
+    initial_mass_kg: float
+    temperature_c: float
+
+
+def draw_bath_temperature(rng: np.random.Generator, setpoint_c: float | None = None) -> float:
+    """Sample the bath operating temperature.
+
+    Args:
+        rng: Random number generator.
+        setpoint_c: Temperature set-point override [degC]; drawn from the thesis distribution when None.
+
+    Returns:
+        Bath temperature [degC].
+    """
+    if setpoint_c is not None:
+        return setpoint_c
+    return float(rng.normal(BATH_TEMPERATURE_MEAN_C, BATH_TEMPERATURE_STD_C))
+
+
+def initial_bath(ambient_c: float, rng: np.random.Generator, setpoint_c: float | None = None) -> tuple[GalvanizingBath, float]:
+    """Create the initial bath and its initial heat content.
+
+    Args:
+        ambient_c: Ambient temperature [degC].
+        rng: Random number generator.
+        setpoint_c: Temperature set-point override [degC]; drawn from the thesis distribution when None.
+
+    Returns:
+        The bath and its initial heat [J].
+    """
+    depth_m = BATH_DEPTH_RANGE_M[1] - (BATH_DEPTH_RANGE_M[1] - BATH_DEPTH_RANGE_M[0]) * rng.uniform()
+    mass_kg = MOLTEN_ZINC_DENSITY * depth_m * BATH_VOLUME_FACTOR
+    bath = GalvanizingBath(initial_mass_kg=mass_kg, temperature_c=draw_bath_temperature(rng, setpoint_c))
+    return bath, mass_kg * zinc_enthalpy_j_per_kg(bath.temperature_c, ambient_c)
+
+
+def zinc_enthalpy_j_per_kg(bath_temperature_c: float, ambient_c: float) -> float:
+    """Specific enthalpy of the molten zinc relative to ambient conditions.
+
+    Args:
+        bath_temperature_c: Bath temperature [degC].
+        ambient_c: Ambient temperature [degC].
+
+    Returns:
+        Specific enthalpy [J/kg].
+    """
+    return 1000.0 * (0.3883 * (419.5 - ambient_c) + 100.9 + 0.4801 * (bath_temperature_c - 419.5))
+
+
+def coating_thickness_um(
+    bath_temperature_c: float, silicon_wt: np.ndarray, rng: np.random.Generator | None = None
+) -> np.ndarray:
+    """Zinc coating thickness as a cubic function of silicon content.
+
+    Args:
+        bath_temperature_c: Bath temperature [degC].
+        silicon_wt: Silicon content of the pieces [% wt].
+        rng: When given (first dip), the temperature-dependent constant term is scaled by a uniform draw per piece.
+
+    Returns:
+        Coating thickness [um] per piece.
+    """
+    constant = -3017 + 6.714 * bath_temperature_c
+    if rng is not None:
+        constant = constant * rng.uniform(size=silicon_wt.shape)
+    return (
+        constant
+        + (4451 - 4.376 * bath_temperature_c) * silicon_wt
+        + (-1.297e4 + 2.611 * bath_temperature_c) * silicon_wt**2
+        + 1.145e4 * silicon_wt**3
+    )
+
+
+def coating_mass_kg(thickness_um: np.ndarray, surface_area_m2: np.ndarray) -> np.ndarray:
+    """Zinc mass deposited on each piece.
+
+    Args:
+        thickness_um: Coating thickness [um].
+        surface_area_m2: Piece surface area [m2].
+
+    Returns:
+        Zinc coating mass [kg] per piece.
+    """
+    return COATING_ZINC_KG_PER_M2_UM * thickness_um * surface_area_m2
+
+
+@dataclass(frozen=True)
+class SkimmingLosses:
+    """Zinc-bearing by-products of a dip.
+
+    Attributes:
+        dross_kg: Dross mass [kg].
+        ash_kg: Ash mass [kg].
+        zinc_lost_dross_kg: Zinc contained in the dross [kg].
+        zinc_lost_ash_kg: Zinc contained in the ash [kg].
+    """
+
+    dross_kg: float
+    ash_kg: float
+    zinc_lost_dross_kg: float
+    zinc_lost_ash_kg: float
+
+
+def draw_skimming_losses(steel_mass_kg: float, rng: np.random.Generator) -> SkimmingLosses:
+    """Sample dross and ash generated by dipping a given steel mass.
+
+    Args:
+        steel_mass_kg: Dipped steel mass [kg].
+        rng: Random number generator.
+
+    Returns:
+        Dross, ash and the zinc they carry.
+    """
+    dross_kg = 0.01 * rng.normal(DROSS_ASH_MEAN_PCT, DROSS_ASH_STD_PCT) * steel_mass_kg
+    ash_kg = 0.01 * rng.normal(DROSS_ASH_MEAN_PCT, DROSS_ASH_STD_PCT) * steel_mass_kg
+    return SkimmingLosses(
+        dross_kg=dross_kg,
+        ash_kg=ash_kg,
+        zinc_lost_dross_kg=dross_kg * 0.01 * rng.normal(DROSS_ZINC_MEAN_PCT, DROSS_ZINC_STD_PCT),
+        zinc_lost_ash_kg=ash_kg * 0.01 * rng.normal(ASH_ZINC_MEAN_PCT, ASH_ZINC_STD_PCT) * (MW_ZN / ZINC_OXIDE_MW),
+    )
+
+
+def makeup_heat_j(
+    bath_mass_kg: float,
+    zinc_lost_kg: float,
+    steel_mass_kg: float,
+    previous_temperature_c: float,
+    new_temperature_c: float,
+    ambient_c: float,
+) -> float:
+    """Heat needed to bring the bath to a higher set-point after a dip.
+
+    Args:
+        bath_mass_kg: Reference bath mass [kg].
+        zinc_lost_kg: Zinc removed from the bath in the dip [kg].
+        steel_mass_kg: Steel mass dipped [kg].
+        previous_temperature_c: Bath temperature before the dip [degC].
+        new_temperature_c: Next bath set-point [degC].
+        ambient_c: Ambient temperature [degC].
+
+    Returns:
+        Heat [J]; zero when the new set-point is not higher.
+    """
+    if new_temperature_c <= previous_temperature_c:
+        return 0.0
+    lost_fraction = abs((previous_temperature_c - ambient_c) / BATH_LOSS_REFERENCE_C)
+    enthalpy_initial = zinc_enthalpy_j_per_kg(previous_temperature_c, ambient_c)
+    enthalpy_final = zinc_enthalpy_j_per_kg(new_temperature_c, ambient_c)
+    return (
+        (bath_mass_kg - zinc_lost_kg) * enthalpy_final
+        + (0.01 * lost_fraction - 1) * bath_mass_kg * enthalpy_initial
+        + STEEL_HEAT_CAPACITY * steel_mass_kg * (new_temperature_c - DRYING_TEMPERATURE_C)
+    )
+
+
+def standard_thickness_um(gauge_m: np.ndarray) -> np.ndarray:
+    """Minimum local coating thickness required by UNE-EN ISO 1461 for each steel gauge.
+
+    Args:
+        gauge_m: Steel gauge [m].
+
+    Returns:
+        Required thickness [um] per piece.
+    """
+    gauge_mm = gauge_m * 1e3
+    thresholds = np.array([threshold for threshold, _ in THICKNESS_STANDARD_UM])
+    values = np.array([value for _, value in THICKNESS_STANDARD_UM] + [THICKNESS_STANDARD_THICK_UM])
+    return values[np.searchsorted(thresholds, gauge_mm, side="right")]
