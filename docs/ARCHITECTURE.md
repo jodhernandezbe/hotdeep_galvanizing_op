@@ -235,8 +235,15 @@ def evaluate_policy(policy, base_seed, n_samples, items, weights=None, preserve_
 
 ```python
 class HdgRobustProblem(pymoo.core.problem.Problem)
-# n_var=7 (OperatingPolicy order), n_obj=4: [-E[U_P], E[COM], E[V_l-poll], E[V_WT]],
-# n_ieq_constr=2: [E[defect] - 0.02, E[peak pickling Fe2+] - 150]  (fluxing Fe2+ 5 g/L = renewal trigger, not a constraint)
+# n_var=8 (OperatingPolicy order; the 8th is the pickling renewal Fe2+ trigger [60, 150] g/L), n_obj=4.
+# Robust objectives (defaults): CVaR at TAIL_FRACTION=0.1 of [-U_P, COM, V_l-poll, V_WT] over the CRN samples;
+# the cost is additionally the worst scenario of PRICE_ROBUST_SCENARIOS, shifted exactly through the
+# per-sample raw-material masses (RAW_MATERIAL_COM_FACTOR). Chance constraints at DEFECT_QUANTILE=0.95:
+# [q95(defect) - 0.02, q95(peak pickling Fe2+) - 150]. tail_fraction=None / defect_quantile=None /
+# price_scenarios=None recover the plain expectation formulation. batch_summary(x) -> BatchSummary
+# (robust_objectives, mean_objectives, constraints, raw_material_masses_kg).
+# The fluxing Fe2+ 5 g/L limit and the rinse cadence stay fixed: the model has no downstream coupling
+# for them (dross is random, rinses are sinks), so freeing them would fabricate improvement.
 # _evaluate flattens (candidate, sample) pairs over joblib workers; CRN per sample.
 
 # run_nsga2: NSGA2(pop=100, offspring=100, SBX(0.9, eta=15), PM(0.1, eta=20)), LHS sampling,

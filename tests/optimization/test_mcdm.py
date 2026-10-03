@@ -23,11 +23,14 @@ from src.optimization.mcdm import (
     sustainability_probability,
     utility_pct,
 )
+from src.optimization.problem import BatchSummary
 from src.process.operating_policy import BASELINE_POLICY, OperatingPolicy
 from src.sustainability.thesis_weights import thesis_indicator_weights
 from src.sustainability.utility import QUALITY_WEIGHT_INDEX
 
-TWO_POINT_X = np.array([[50.0, 17.0, 900.0, 50.0, 4.5, 400.0, 450.0], [55.0, 15.0, 800.0, 45.0, 4.2, 350.0, 452.0]])
+TWO_POINT_X = np.array(
+    [[50.0, 17.0, 900.0, 50.0, 4.5, 400.0, 450.0, 150.0], [55.0, 15.0, 800.0, 45.0, 4.2, 350.0, 452.0, 120.0]]
+)
 TWO_POINT_F = np.array([[-90.0, 1.0e6, 40.0, 200.0], [-80.0, 0.8e6, 50.0, 180.0]])
 
 
@@ -45,7 +48,7 @@ def test_fahp_objective_weights_normalized() -> None:
 
 def test_compromise_on_two_point_front() -> None:
     result = select_compromise(TWO_POINT_X, TWO_POINT_F)
-    assert result.f.shape == (4,) and result.x.shape == (7,)
+    assert result.f.shape == (4,) and result.x.shape == (8,)
     assert np.all((result.memberships >= 0) & (result.memberships <= 1))
     np.testing.assert_array_equal(result.utopia, TWO_POINT_F.min(axis=0))
     np.testing.assert_array_equal(result.nadir, TWO_POINT_F.max(axis=0))
@@ -99,8 +102,8 @@ def test_sustainability_probability_follows_the_thesis_normal_band(tmp_path: Pat
 
 
 def _fake_reevaluation(objectives: np.ndarray, constraints: np.ndarray):  # type: ignore[no-untyped-def]
-    def _fake(*_args: object, **_kwargs: object) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return objectives, constraints, np.ones((objectives.shape[0], 7))
+    def _fake(*_args: object, **_kwargs: object) -> BatchSummary:
+        return BatchSummary(objectives, objectives.copy(), constraints, np.ones((objectives.shape[0], 7)))
 
     return _fake
 

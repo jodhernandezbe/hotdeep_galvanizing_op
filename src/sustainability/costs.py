@@ -10,9 +10,13 @@ import logging
 from dataclasses import dataclass
 from typing import Final
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 RAW_MATERIAL_KEYS: Final = ("naoh", "hcl", "nh4cl", "zncl2", "zn", "h2o", "nh4oh")
+RAW_MATERIAL_COM_FACTOR: Final = 1.23e-3
+"""COM change per (USD/t price delta x kg purchased): the Turton 1.23 factor over the kg-to-t conversion."""
 
 
 @dataclass(frozen=True)
@@ -96,6 +100,34 @@ def default_costs(preserve_thesis_quirks: bool) -> CostParameters:
         `THESIS_COSTS` in thesis mode, `THESIS_CORRECTED_COSTS` in corrected mode.
     """
     return THESIS_COSTS if preserve_thesis_quirks else THESIS_CORRECTED_COSTS
+
+
+def raw_material_price_delta(reference: CostParameters, scenario: CostParameters) -> np.ndarray:
+    """Price difference per `RAW_MATERIAL_KEYS` between two scenarios [USD/t].
+
+    The delta is only meaningful for the mass-based COM shift when the scenarios agree on every
+    price outside the raw materials, because labor enters COM directly and water also enters the
+    waste-treatment cost.
+
+    Args:
+        reference: Scenario the objectives were computed with.
+        scenario: Scenario to move the cost to.
+
+    Returns:
+        Array of shape (7,) in `RAW_MATERIAL_KEYS` order.
+
+    Raises:
+        ValueError: If the scenarios differ in labor or in the water price.
+    """
+    if scenario.labor_usd_per_year != reference.labor_usd_per_year:
+        message = f"Labor differs between '{reference.name}' and '{scenario.name}'; masses cannot absorb it"
+        logger.error(message)
+        raise ValueError(message)
+    if scenario.h2o_usd_per_t != reference.h2o_usd_per_t:
+        message = f"Water price differs between '{reference.name}' and '{scenario.name}' and also enters waste treatment"
+        logger.error(message)
+        raise ValueError(message)
+    return np.array([scenario.raw_material_prices[k] - reference.raw_material_prices[k] for k in RAW_MATERIAL_KEYS])
 
 
 def get_cost_scenario(name: str) -> CostParameters:

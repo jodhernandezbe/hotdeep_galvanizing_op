@@ -20,6 +20,7 @@ from scipy.stats import t as student_t
 from src.analysis.critical_points import assess_sustainability
 from src.optimization.evaluation import DEEP_SAMPLES, FULL_YEAR_ITEMS, PolicyEvaluation, evaluate_policy
 from src.optimization.front_evaluation import reevaluate_front
+from src.optimization.problem import BatchSummary
 from src.optimization.run_nsga2 import load_checkpoint
 from src.process.operating_policy import BASELINE_POLICY, OperatingPolicy
 from src.sustainability.costs import COST_SCENARIOS, CostParameters, default_costs, get_cost_scenario
@@ -308,37 +309,31 @@ def prepare_selection(
     checkpoint = load_checkpoint(run_dir)
     config, x = checkpoint["config"], np.atleast_2d(checkpoint["opt_X"])
     scenario = cost_scenario or config["cost_scenario"]
-    objectives, constraints, masses = reevaluate_front(x, scenario, config["seed"], config["n_mc_samples"], front_items, n_jobs)
-    feasible = (constraints[:-1] <= 0).all(axis=1)
+    summary = reevaluate_front(x, scenario, config["seed"], config["n_mc_samples"], front_items, n_jobs)
+    feasible = (summary.constraints[:-1] <= 0).all(axis=1)
     if not feasible.any():
         message = f"No design of the front is feasible at {front_items} items per year"
         logger.error(message)
         raise ValueError(message)
-    _save_front(out_dir, x, objectives, constraints, masses, front_items, scenario)
-    compromise = select_compromise(x[feasible], objectives[:-1][feasible], weights)
+    _save_front(out_dir, x, summary, front_items, scenario)
+    compromise = select_compromise(x[feasible], summary.robust_objectives[:-1][feasible], weights)
     _save_compromise(out_dir, compromise)
     return compromise
 
 
-def _save_front(
-    out_dir: Path,
-    x: np.ndarray,
-    objectives: np.ndarray,
-    constraints: np.ndarray,
-    masses: np.ndarray,
-    items: int,
-    scenario: str = "",
-) -> None:
+def _save_front(out_dir: Path, x: np.ndarray, summary: BatchSummary, items: int, scenario: str = "") -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         out_dir / "front.npz",
         x=x,
-        f=objectives[:-1],
-        g=constraints[:-1],
-        raw_material_masses_kg=masses[:-1],
-        baseline_f=objectives[-1],
-        baseline_g=constraints[-1],
-        baseline_raw_material_masses_kg=masses[-1],
+        f=summary.robust_objectives[:-1],
+        f_mean=summary.mean_objectives[:-1],
+        g=summary.constraints[:-1],
+        raw_material_masses_kg=summary.raw_material_masses_kg[:-1],
+        baseline_f=summary.robust_objectives[-1],
+        baseline_f_mean=summary.mean_objectives[-1],
+        baseline_g=summary.constraints[-1],
+        baseline_raw_material_masses_kg=summary.raw_material_masses_kg[-1],
         items=items,
         cost_scenario=scenario,
     )

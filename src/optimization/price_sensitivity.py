@@ -19,12 +19,17 @@ import numpy as np
 from scipy.stats import spearmanr
 
 from src.optimization.mcdm import CompromiseResult, select_compromise
-from src.sustainability.costs import COST_SCENARIOS, RAW_MATERIAL_KEYS, CostParameters, get_cost_scenario
+from src.sustainability.costs import (
+    COST_SCENARIOS,
+    RAW_MATERIAL_COM_FACTOR,
+    CostParameters,
+    get_cost_scenario,
+    raw_material_price_delta,
+)
 
 logger = logging.getLogger(__name__)
 
 COM_COLUMN: Final = 1
-RAW_MATERIAL_COM_FACTOR: Final = 1.23e-3
 DEFAULT_FRONT: Final = "results/mc/front.npz"
 DEFAULT_OUT_DIR: Final = "results/sensitivity"
 
@@ -49,22 +54,10 @@ def shift_com(objectives: np.ndarray, masses: np.ndarray, reference: CostParamet
         ValueError: If the scenarios differ in a price outside the raw materials (water or labor),
             which the mass-based recomputation cannot absorb.
     """
-    _check_shiftable(reference, scenario)
-    delta = np.array([scenario.raw_material_prices[k] - reference.raw_material_prices[k] for k in RAW_MATERIAL_KEYS])
+    delta = raw_material_price_delta(reference, scenario)
     shifted = np.array(objectives, dtype=float, copy=True)
     shifted[..., COM_COLUMN] += RAW_MATERIAL_COM_FACTOR * np.atleast_2d(masses) @ delta
     return shifted
-
-
-def _check_shiftable(reference: CostParameters, scenario: CostParameters) -> None:
-    if scenario.labor_usd_per_year != reference.labor_usd_per_year:
-        message = f"Labor differs between '{reference.name}' and '{scenario.name}'; masses cannot absorb it"
-        logger.error(message)
-        raise ValueError(message)
-    if scenario.h2o_usd_per_t != reference.h2o_usd_per_t:
-        message = f"Water price differs between '{reference.name}' and '{scenario.name}' and also enters waste treatment"
-        logger.error(message)
-        raise ValueError(message)
 
 
 def _compromise_summary(
@@ -134,10 +127,12 @@ def run_sensitivity(front_path: Path, out_dir: Path, scenarios: tuple[str, ...])
     front = np.load(front_path, allow_pickle=True)
     reference = get_cost_scenario(str(front["cost_scenario"]))
     feasible = (front["g"] <= 0).all(axis=1)
-    x, f, masses = front["x"][feasible], front["f"][feasible], front["raw_material_masses_kg"][feasible]
+    x, f, masses = front["x"][feasible], front["f_mean"][feasible], front["raw_material_masses_kg"][feasible]
     names = [reference.name, *[name for name in scenarios if name != reference.name]]
     objectives = {name: shift_com(f, masses, reference, get_cost_scenario(name)) for name in names}
-    baseline_f, baseline_masses = np.atleast_2d(front["baseline_f"]), np.atleast_2d(front["baseline_raw_material_masses_kg"])
+    baseline_f, baseline_masses = np.atleast_2d(front["baseline_f_mean"]), np.atleast_2d(
+        front["baseline_raw_material_masses_kg"]
+    )
     baselines = {name: shift_com(baseline_f, baseline_masses, reference, get_cost_scenario(name))[0] for name in names}
     comparison = compare_scenarios(x, objectives, baselines)
     comparison["items"] = int(front["items"])

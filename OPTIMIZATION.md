@@ -51,16 +51,32 @@ Simulation mode: corrected (`preserve_thesis_quirks=False`). Thesis mode stays f
 | 5 | `fluxing_ph_target` | [4, 5] | — |
 | 6 | `fluxing_salt_g_per_l` (ZnCl₂/NH₄Cl fixed 60/40) | [300, 500] | g/L |
 | 7 | `galvanizing_temperature_c` | [445, 455] | °C |
+| 8 | `pickling_renewal_fe_g_per_l` | [60, 150] | g/L |
 
-Baseline design: `BASELINE_POLICY` (thesis-nominal midpoints: 50 °C, 17 %, 900 s, 50 °C, pH 4.5, 400 g/L, 450 °C).
+Baseline design: `BASELINE_POLICY` (thesis-nominal midpoints: 50 °C, 17 %, 900 s, 50 °C, pH 4.5, 400 g/L, 450 °C,
+renewal at 150 g/L). Variable 8 is the Fe²⁺ concentration that triggers a normal-pickling renewal: renewing late
+exhausts the acid and carries residual rust into the flux (more flux renewals: salts + waste), renewing early spends
+acid and spent-bath volume — both sides are priced in the objectives. The bath's Fe²⁺ plateaus near 130 g/L at the
+thesis drag-out, so the thesis trigger (150) in practice never fires. The fluxing trigger (5 g/L) and the rinse
+cadence (54/year) stay **fixed**: the model has no downstream coupling for them (dross is drawn randomly and the
+rinses are sinks), so freeing them would fabricate improvement with no modeled penalty.
 
-### Objectives (minimize) and constraints (g ≤ 0)
+### Robust objectives (minimize) and chance constraints (g ≤ 0)
 
-F(x) = [ −E[U_P], E[COM] (USD), E[V_l-poll] (m³), E[V_WT] (m³) ], Monte Carlo means over N = 100 common-random-number
-samples per evaluation (`np.random.SeedSequence(seed).spawn(N)`; renewals use a dedicated stream so lots/ambient stay
-paired across candidates).
+Per candidate, N = 100 common-random-number samples (`np.random.SeedSequence(seed).spawn(N)`; renewals use a
+dedicated stream so lots/ambient stay paired across candidates). The optimizer minimizes the CVaR at the 10 % tail
+of each objective — the mean of the worst 10 sampled years — instead of the plain mean:
 
-g₁ = P(δ < δ_ISO) − 0.02; g₂ = E[peak pickling Fe²⁺] − 150 g/L.
+F(x) = [ −CVaR₀.₁(U_P, worst = lowest), max over price scenarios of CVaR₀.₁(COM) (USD),
+CVaR₀.₁(V_l-poll) (m³), CVaR₀.₁(V_WT) (m³) ].
+
+The cost objective is the **worst case across the three price scenarios** (market2025, thesis_corrected, thesis):
+prices enter COM only through the purchased raw-material masses, so each sample's COM under another scenario is
+recomputed exactly as `COM + 1.23e-3 · Δprices · masses` with no extra simulation (`BatchSummary`).
+
+g₁ = q₀.₉₅(annual defect fraction) − 0.02; g₂ = q₀.₉₅(peak pickling Fe²⁺) − 150 g/L (chance constraints: the 95th
+percentile of the Monte Carlo years must comply, not only the mean). `tail_fraction=None`, `defect_quantile=None`
+and `price_scenarios=None` recover the expectation-based formulation of the first runs.
 
 The fluxing-bath Fe²⁺ limit (5 g/L) is the simulation's renewal trigger, not a constraint: the peak is ≥ 5 g/L at every
 renewal by construction (a first run with it as g₃ had no feasible solution in 20 generations), and the literature gives

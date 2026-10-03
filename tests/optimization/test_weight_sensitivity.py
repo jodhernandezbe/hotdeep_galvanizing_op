@@ -20,9 +20,9 @@ from src.optimization.weight_sensitivity import (
 
 X = np.array(
     [
-        [50.0, 17.0, 900.0, 50.0, 4.5, 400.0, 450.0],
-        [55.0, 15.0, 800.0, 45.0, 4.2, 350.0, 452.0],
-        [45.0, 13.0, 700.0, 42.0, 4.8, 450.0, 447.0],
+        [50.0, 17.0, 900.0, 50.0, 4.5, 400.0, 450.0, 150.0],
+        [55.0, 15.0, 800.0, 45.0, 4.2, 350.0, 452.0, 120.0],
+        [45.0, 13.0, 700.0, 42.0, 4.8, 450.0, 447.0, 90.0],
     ]
 )
 F = np.array([[-90.0, 1.0e6, 60.0, 200.0], [-80.0, 0.8e6, 50.0, 180.0], [-70.0, 0.6e6, 40.0, 160.0]])
@@ -66,5 +66,5 @@ def test_report_has_sweep_summary_fields() -> None:
     sweep = analyze_weights(X, F, np.random.default_rng(2), n_draws=300)["sweep"]
     assert sweep["n_draws"] == 300 and 1 <= sweep["n_distinct_selected"] <= 3
     assert 0.0 <= sweep["share_selecting_default"] <= 1.0
-    assert len(sweep["selected_x_min"]) == 7 and len(sweep["selected_f_range_fraction_of_front"]) == 4
+    assert len(sweep["selected_x_min"]) == 8 and len(sweep["selected_f_range_fraction_of_front"]) == 4
     assert equal_weights().sum() == pytest.approx(1.0)

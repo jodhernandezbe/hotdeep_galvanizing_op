@@ -21,8 +21,10 @@ POLICY_BOUNDS: Final[dict[str, tuple[float, float]]] = {
     "fluxing_ph_target": (4.0, 5.0),
     "fluxing_salt_g_per_l": (300.0, 500.0),
     "galvanizing_temperature_c": (445.0, 455.0),
+    "pickling_renewal_fe_g_per_l": (60.0, 150.0),
 }
 N_DECISION_VARIABLES: Final = len(POLICY_BOUNDS)
+THESIS_PICKLING_RENEWAL_FE_G_PER_L: Final = 150.0
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,9 @@ class OperatingPolicy:
         fluxing_ph_target: Fresh fluxing bath pH.
         fluxing_salt_g_per_l: Total ZnCl2/NH4Cl salt loading at the fixed 60/40 ratio [g/L].
         galvanizing_temperature_c: Zinc bath temperature set-point [degC].
+        pickling_renewal_fe_g_per_l: Fe2+ concentration that triggers a normal pickling bath renewal [g/L].
+            Renewing late exhausts the acid and carries residual rust into the flux; renewing early spends
+            acid and spent-bath volume. The thesis renews at the 150 g/L exhaustion limit (the default).
     """
 
     degreasing_temperature_c: float
@@ -46,6 +51,7 @@ class OperatingPolicy:
     fluxing_ph_target: float
     fluxing_salt_g_per_l: float
     galvanizing_temperature_c: float
+    pickling_renewal_fe_g_per_l: float = THESIS_PICKLING_RENEWAL_FE_G_PER_L
 
     def __post_init__(self) -> None:
         """Validate every decision variable against its box bounds.
@@ -64,7 +70,7 @@ class OperatingPolicy:
         """Decision variables as a vector in `POLICY_BOUNDS` field order.
 
         Returns:
-            Array of shape (7,).
+            Array of shape (`N_DECISION_VARIABLES`,).
         """
         return np.array([getattr(self, variable.name) for variable in fields(self)], dtype=float)
 
@@ -73,7 +79,8 @@ class OperatingPolicy:
         """Build a policy from a decision vector in `POLICY_BOUNDS` field order.
 
         Args:
-            x: Decision vector of shape (7,).
+            x: Decision vector of shape (`N_DECISION_VARIABLES`,), or of the legacy 7-variable
+                layout, in which case the pickling renewal trigger keeps its thesis value.
 
         Returns:
             Validated operating policy.
@@ -82,8 +89,8 @@ class OperatingPolicy:
             ValueError: If the vector has the wrong length or a value is out of bounds.
         """
         values = np.asarray(x, dtype=float).ravel()
-        if values.size != N_DECISION_VARIABLES:
-            message = f"Decision vector must have {N_DECISION_VARIABLES} entries, got {values.size}"
+        if values.size not in (N_DECISION_VARIABLES, N_DECISION_VARIABLES - 1):
+            message = f"Decision vector must have {N_DECISION_VARIABLES} (or the legacy 7) entries, got {values.size}"
             logger.error(message)
             raise ValueError(message)
         return cls(*(float(value) for value in values))
@@ -105,7 +112,7 @@ def policy_lower_bounds() -> np.ndarray:
     """Lower box bounds in `POLICY_BOUNDS` field order.
 
     Returns:
-        Array of shape (7,).
+        Array of shape (`N_DECISION_VARIABLES`,).
     """
     return np.array([lower for lower, _ in POLICY_BOUNDS.values()], dtype=float)
 
@@ -114,6 +121,6 @@ def policy_upper_bounds() -> np.ndarray:
     """Upper box bounds in `POLICY_BOUNDS` field order.
 
     Returns:
-        Array of shape (7,).
+        Array of shape (`N_DECISION_VARIABLES`,).
     """
     return np.array([upper for _, upper in POLICY_BOUNDS.values()], dtype=float)

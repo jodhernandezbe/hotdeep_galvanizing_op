@@ -6,6 +6,7 @@ Date: 2026-10-02
 """
 
 import logging
+from dataclasses import dataclass
 from typing import Any, Final, cast
 
 import numpy as np
@@ -20,7 +21,14 @@ from src.process.operating_policy import (
     policy_upper_bounds,
 )
 from src.process.simulation import NORMAL_PICKLING_IRON_LIMIT_G_PER_L, simulate_year
-from src.sustainability.costs import RAW_MATERIAL_KEYS, CostParameters
+from src.sustainability.costs import (
+    RAW_MATERIAL_COM_FACTOR,
+    RAW_MATERIAL_KEYS,
+    CostParameters,
+    default_costs,
+    get_cost_scenario,
+    raw_material_price_delta,
+)
 from src.sustainability.greenscope import Indicator, raw_material_masses_kg
 from src.sustainability.stream_assembly import build_balance
 from src.sustainability.thesis_weights import thesis_indicator_weights
@@ -33,6 +41,57 @@ N_CONSTRAINTS: Final = 2
 DEFECT_PROBABILITY_LIMIT: Final = 0.02
 MASS_SCALARS_OFFSET: Final = 7
 _N_SCALARS: Final = MASS_SCALARS_OFFSET + len(RAW_MATERIAL_KEYS)
+TAIL_FRACTION: Final = 0.1
+DEFECT_QUANTILE: Final = 0.95
+PRICE_ROBUST_SCENARIOS: Final = ("market2025", "thesis_corrected", "thesis")
+
+
+@dataclass(frozen=True)
+class BatchSummary:
+    """Aggregated Monte Carlo statistics of a batch of designs.
+
+    Attributes:
+        robust_objectives: Objectives the optimizer minimizes, shape (n, 4): CVaR of the tail of
+            each objective and, for the cost, the worst scenario of `price_scenarios`.
+        mean_objectives: Plain Monte Carlo means of the objectives, shape (n, 4).
+        constraints: Constraint values (g <= 0 feasible), shape (n, 2).
+        raw_material_masses_kg: Mean purchases per `RAW_MATERIAL_KEYS` [kg], shape (n, 7).
+    """
+
+    robust_objectives: np.ndarray
+    mean_objectives: np.ndarray
+    constraints: np.ndarray
+    raw_material_masses_kg: np.ndarray
+
+
+def lower_tail_mean(values: np.ndarray, tail_fraction: float) -> np.ndarray:
+    """Mean of the worst (lowest) tail of each row: the CVaR of a quantity to maximize.
+
+    Args:
+        values: Sample matrix, shape (n, s).
+        tail_fraction: Fraction of samples in the tail (at least one sample is used).
+
+    Returns:
+        Tail means, shape (n,).
+    """
+    ordered = np.sort(np.asarray(values, dtype=float), axis=1)
+    count = max(1, round(ordered.shape[1] * tail_fraction))
+    return ordered[:, :count].mean(axis=1)
+
+
+def upper_tail_mean(values: np.ndarray, tail_fraction: float) -> np.ndarray:
+    """Mean of the worst (highest) tail of each row: the CVaR of a quantity to minimize.
+
+    Args:
+        values: Sample matrix, shape (n, s).
+        tail_fraction: Fraction of samples in the tail (at least one sample is used).
+
+    Returns:
+        Tail means, shape (n,).
+    """
+    ordered = np.sort(np.asarray(values, dtype=float), axis=1)
+    count = max(1, round(ordered.shape[1] * tail_fraction))
+    return ordered[:, -count:].mean(axis=1)
 
 
 def candidate_sample_scalars(
@@ -92,6 +151,9 @@ class HdgRobustProblem(Problem):
         weights: np.ndarray | None = None,
         preserve_thesis_quirks: bool = False,
         costs: CostParameters | None = None,
+        tail_fraction: float | None = TAIL_FRACTION,
+        defect_quantile: float | None = DEFECT_QUANTILE,
+        price_scenarios: tuple[str, ...] | None = PRICE_ROBUST_SCENARIOS,
     ) -> None:
         """Configure the stochastic evaluation budget.
 
@@ -103,6 +165,10 @@ class HdgRobustProblem(Problem):
             weights: Indicator weights, length 18; thesis weights when None.
             preserve_thesis_quirks: Simulation mode (False = corrected, the optimization substrate).
             costs: Cost scenario of the COM indicator; the fidelity mode's default when None.
+            tail_fraction: CVaR tail of the robust objectives; None optimizes plain means.
+            defect_quantile: Quantile of the chance constraints; None constrains the means.
+            price_scenarios: Scenario names of the worst-case cost objective; None or empty keeps
+                the evaluation scenario only.
         """
         super().__init__(
             n_var=N_DECISION_VARIABLES,
@@ -118,28 +184,65 @@ class HdgRobustProblem(Problem):
         self.weights = thesis_indicator_weights() if weights is None else np.asarray(weights, dtype=float)
         self.preserve_thesis_quirks = preserve_thesis_quirks
         self.costs = costs
+        self.tail_fraction = tail_fraction
+        self.defect_quantile = defect_quantile
+        self.price_scenarios = price_scenarios
 
-    def batch_means(self, x: np.ndarray) -> np.ndarray:
-        """Monte Carlo means of the per-sample scalars for a batch of designs.
+    def batch_summary(self, x: np.ndarray) -> BatchSummary:
+        """Robust and mean Monte Carlo statistics for a batch of designs.
 
         Args:
-            x: Decision matrix, shape (n, 7).
+            x: Decision matrix, shape (n, `N_DECISION_VARIABLES`).
 
         Returns:
-            Means of the `candidate_sample_scalars` layout, shape (n, `_N_SCALARS`): the optimizer
-            scalars first, then the raw-material masses from `MASS_SCALARS_OFFSET` on.
+            The batch summary; `robust_objectives` equals `mean_objectives` when `tail_fraction`
+            is None and the scenario set is empty.
         """
-        return self._batch_scalars(np.atleast_2d(x)).mean(axis=1)
+        scalars = self._batch_scalars(np.atleast_2d(x))
+        masses = scalars[:, :, MASS_SCALARS_OFFSET:]
+        mean = scalars.mean(axis=1)
+        mean_objectives = np.column_stack([-mean[:, 0], mean[:, 1], mean[:, 2], mean[:, 3]])
+        return BatchSummary(
+            robust_objectives=self._robust_objectives(scalars, masses, mean_objectives),
+            mean_objectives=mean_objectives,
+            constraints=self._constraints(scalars, mean),
+            raw_material_masses_kg=masses.mean(axis=1),
+        )
 
-    def _evaluate(self, x: np.ndarray, out: dict[str, Any], *args: Any, **kwargs: Any) -> None:
-        means = self.batch_means(np.atleast_2d(x))
-        out["F"] = np.column_stack([-means[:, 0], means[:, 1], means[:, 2], means[:, 3]])
-        out["G"] = np.column_stack(
+    def _robust_objectives(self, scalars: np.ndarray, masses: np.ndarray, mean_objectives: np.ndarray) -> np.ndarray:
+        if self.tail_fraction is None:
+            return np.array(mean_objectives, copy=True)
+        tail = self.tail_fraction
+        return np.column_stack(
             [
-                means[:, 4] - DEFECT_PROBABILITY_LIMIT,
-                means[:, 5] - NORMAL_PICKLING_IRON_LIMIT_G_PER_L,
+                -lower_tail_mean(scalars[:, :, 0], tail),
+                self._robust_cost(scalars[:, :, 1], masses, tail),
+                upper_tail_mean(scalars[:, :, 2], tail),
+                upper_tail_mean(scalars[:, :, 3], tail),
             ]
         )
+
+    def _robust_cost(self, com_samples: np.ndarray, masses: np.ndarray, tail: float) -> np.ndarray:
+        reference = self.costs if self.costs is not None else default_costs(self.preserve_thesis_quirks)
+        worst = upper_tail_mean(com_samples, tail)
+        for name in self.price_scenarios or ():
+            delta = raw_material_price_delta(reference, get_cost_scenario(name))
+            shifted = com_samples + RAW_MATERIAL_COM_FACTOR * masses @ delta
+            worst = np.maximum(worst, upper_tail_mean(shifted, tail))
+        return worst
+
+    def _constraints(self, scalars: np.ndarray, mean: np.ndarray) -> np.ndarray:
+        if self.defect_quantile is None:
+            defect, peak = mean[:, 4], mean[:, 5]
+        else:
+            defect = np.quantile(scalars[:, :, 4], self.defect_quantile, axis=1)
+            peak = np.quantile(scalars[:, :, 5], self.defect_quantile, axis=1)
+        return np.column_stack([defect - DEFECT_PROBABILITY_LIMIT, peak - NORMAL_PICKLING_IRON_LIMIT_G_PER_L])
+
+    def _evaluate(self, x: np.ndarray, out: dict[str, Any], *args: Any, **kwargs: Any) -> None:
+        summary = self.batch_summary(np.atleast_2d(x))
+        out["F"] = summary.robust_objectives
+        out["G"] = summary.constraints
 
     def _batch_scalars(self, x: np.ndarray) -> np.ndarray:
         seeds = sample_seeds(self.base_seed, self.n_mc_samples)

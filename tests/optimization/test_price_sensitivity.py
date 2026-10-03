@@ -20,7 +20,7 @@ from src.optimization.run_nsga2 import RunConfig, run
 from src.sustainability.costs import THESIS_COSTS, get_cost_scenario
 
 TINY = {"n_mc_samples": 3, "items": 50_000}
-X = np.array([[50.0, 17.0, 900.0, 50.0, 4.5, 400.0, 450.0], [55.0, 15.0, 800.0, 45.0, 4.2, 350.0, 452.0]])
+X = np.array([[50.0, 17.0, 900.0, 50.0, 4.5, 400.0, 450.0, 150.0], [55.0, 15.0, 800.0, 45.0, 4.2, 350.0, 452.0, 120.0]])
 
 
 @pytest.fixture(scope="module")
@@ -36,10 +36,10 @@ def tiny_front(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 def test_mass_based_shift_matches_direct_reevaluation() -> None:
     reference, other = get_cost_scenario("thesis_corrected"), get_cost_scenario("market2025")
-    f_ref, _g, masses = reevaluate_front(X, reference.name, 8, 2, TINY["items"])
-    f_direct, _g2, _m2 = reevaluate_front(X, other.name, 8, 2, TINY["items"])
-    f_shifted = shift_com(f_ref, masses, reference, other)
-    np.testing.assert_allclose(f_shifted, f_direct, rtol=1e-10)
+    summary_ref = reevaluate_front(X, reference.name, 8, 2, TINY["items"])
+    summary_direct = reevaluate_front(X, other.name, 8, 2, TINY["items"])
+    f_shifted = shift_com(summary_ref.mean_objectives, summary_ref.raw_material_masses_kg, reference, other)
+    np.testing.assert_allclose(f_shifted, summary_direct.mean_objectives, rtol=1e-10)
 
 
 def test_shift_refuses_scenarios_differing_outside_raw_materials() -> None:

@@ -300,7 +300,8 @@ def _pickle_normal(plant: Plant, load: _DipLoad, ambient: float, rng: np.random.
     bath = plant.normal_pickling
     iron_g_per_l = 0.01 * bath.composition_wt[2] * bath.mass_kg / bath.volume_m3
     plant.totals.peak_pickling_fe2_g_per_l = max(plant.totals.peak_pickling_fe2_g_per_l, float(iron_g_per_l))
-    if iron_g_per_l >= NORMAL_PICKLING_IRON_LIMIT_G_PER_L:
+    renewal_limit = NORMAL_PICKLING_IRON_LIMIT_G_PER_L if plant.policy is None else plant.policy.pickling_renewal_fe_g_per_l
+    if iron_g_per_l >= renewal_limit:
         bath.renew(_new_normal_pickling(_renewal_rng(plant, rng), ambient, plant.policy), ambient)
     result = pickle_normal(
         bath.composition_wt,
