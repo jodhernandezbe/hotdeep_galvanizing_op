@@ -139,3 +139,20 @@ def test_prepare_selection_rejects_a_front_without_feasible_designs(tmp_path: Pa
     monkeypatch.setattr(mcdm, "reevaluate_front", _fake_reevaluation(np.ones((n + 1, 4)), np.ones((n + 1, 2))))
     with pytest.raises(ValueError, match="No design of the front is feasible"):
         mcdm.prepare_selection(run_dir, tmp_path / "out", front_items=1, n_jobs=1)
+
+
+def test_no_backsliding_veto_excludes_backsliding_designs(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from src.optimization import mcdm
+
+    run_dir = _finished_tiny_run(tmp_path / "run")
+    n = np.atleast_2d(np.load(run_dir / "final.npz")["opt_X"]).shape[0]
+    objectives = np.column_stack([-np.arange(n, 0, -1.0), np.ones(n), np.ones(n), np.ones(n)])
+    objectives[0, 2] = 50.0
+    objectives = np.vstack([objectives, [0.0, 1.0, 1.0, 1.0]])
+    constraints = np.full((n + 1, 2), -1.0)
+    monkeypatch.setattr(mcdm, "reevaluate_front", _fake_reevaluation(objectives, constraints))
+    monkeypatch.setattr(mcdm, "_asis_objectives", lambda *a, **k: np.array([0.0, 1.0, 5.0, 5.0]))
+    mcdm.prepare_selection(run_dir, tmp_path / "out", front_items=1, n_jobs=1)
+    saved = np.load(tmp_path / "out" / "front.npz")
+    assert not saved["eligible"][0] and saved["eligible"][1:].all()
+    np.testing.assert_array_equal(saved["asis_f"], [0.0, 1.0, 5.0, 5.0])

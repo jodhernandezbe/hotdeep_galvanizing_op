@@ -149,3 +149,34 @@ These support modelling the capacity excess as a withdrawn side stream (option 1
   annual costs (0.28·capital + 2.73·labor ≈ 0.64 M USD) do not scale with the pieces, so the objectives are not
   comparable with full-year (41.4 M pieces) figures. The front is therefore **re-evaluated at the full-year budget**
   (`mcdm.prepare_selection`) before the compromise is selected and Figure 1 is drawn.
+
+## Data corrections in corrected mode (energy emission factors)
+
+Thesis mode keeps the listing's factors verbatim. Corrected mode replaces them with sourced Colombian factors
+(`greenscope.GRID_CO2_KG_PER_KWH_UPME_2024`, `greenscope.NATURAL_GAS_CO2_KG_PER_J`):
+
+- **Electricity (dryer):** listing 4 kgCO2/kWh (thesis Table A-3 prints 43; the code uses 4) → 0.220 kgCO2e/kWh,
+  the UPME 2024 SIN grid factor for GHG inventories (`upme2024fe`). The plant buys grid electricity, so the grid
+  factor applies, not a hydropower life-cycle value.
+- **Natural gas (heated baths):** listing `25e-6/1.99714` kgCO2 per J of duty ≈ 12.5 kgCO2/MJ → FECOC generic
+  Colombian natural gas, 56.06 kgCO2/GJ of fuel over the 0.737 boiler efficiency (`upme2016fecoc`), ≈ 0.076 kgCO2/MJ
+  of duty. The listing is ~160x higher; its divisor 1.99714 is within 1 % of FECOC's per-m3 factor (1.9806 kgCO2/m3),
+  suggesting a units mix-up in the original chain.
+
+## Instrument findings (GREENSCOPE as an optimization objective)
+
+Exposed by the NSGA-II stress test (2026-10-04); all faithful to the thesis and to Ruiz-Mercado's methodology:
+
+1. **Self-referencing normalization.** The worst cases of V_l-poll, V_l-spec and V_WT are the process' own streams
+   without recovery (thesis Anexo A, Table A-1 notes 4, 7, 8), so their scores measure the recovered fraction and are
+   invariant to how much waste a policy creates. COM's best/worst are fixed multiples of COM itself (score 64.39).
+   The drying GWP worst case equals its actual value (`G_I_worst(6,4)` = the same expression), so that score is 0 by
+   construction. Only conversion (AAE), the energy scores and quality can move U_P.
+2. **AAE is a limiting-reagent conversion.** Thesis eq. 2-41 specializes Ruiz-Mercado's actual atom economy to the
+   limiting reagent (the incoming rust), so it cannot penalize acid overfeeding: unguarded optimization renews the
+   pickling bath ~20x more, raises AAE from ~2 % to ~46 % and multiplies spent-acid volume by 7 with no U_P penalty.
+   Mitigations: the no-backsliding veto on the MCDM selection (`mcdm.prepare_selection`), and the fed-basis option
+   (`fed_atom_economy=True`): pickling AAE over rust share + HCl actually charged (FeCl2 as product). The fed basis is
+   scoped to pickling; the fluxing unit keeps the thesis basis because its reacting iron arrives as an internal
+   transfer (residual rust) and its chloride comes from the bath salts, so a fed denominator is not definable from
+   the stored input streams.

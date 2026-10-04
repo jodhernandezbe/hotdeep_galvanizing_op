@@ -324,10 +324,10 @@ def generate_all(mc_dir: Path, results_dir: Path) -> None:
 
 def _reporting_front(mc_dir: Path) -> np.ndarray:
     with np.load(mc_dir / "front.npz") as data:
-        objectives, constraints = data["f"], data["g"]
-    feasible = (constraints <= 0).all(axis=1)
+        objectives = data["f"]
+        feasible = data["eligible"] if "eligible" in data.files else (data["g"] <= 0).all(axis=1)
     if not feasible.any():
-        logger.warning("No feasible design in front.npz; plotting the whole non-dominated set")
+        logger.warning("No eligible design in front.npz; plotting the whole non-dominated set")
         feasible[:] = True
     candidates = objectives[feasible]
     return candidates[pareto_mask(candidates)]

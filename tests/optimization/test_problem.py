@@ -15,6 +15,7 @@ from src.optimization.problem import HdgRobustProblem, lower_tail_mean, upper_ta
 from src.optimization.run_nsga2 import RunConfig, load_checkpoint, run
 from src.optimization.termination import HypervolumeStagnation
 from src.process.operating_policy import BASELINE_POLICY, OperatingPolicy
+from src.sustainability.greenscope import Indicator
 
 TINY = {"n_mc_samples": 3, "items": 50_000}
 X_PAIR = np.array([BASELINE_POLICY.to_array(), [58.0, 12.5, 1150.0, 42.0, 4.9, 480.0, 446.0, 120.0]])
@@ -120,3 +121,23 @@ def test_seeded_rerun_reproduces_front(tiny_run: tuple[Path, Path]) -> None:
     final_a, final_b = load_checkpoint(run_dir_a), load_checkpoint(run_dir_b)
     np.testing.assert_array_equal(final_a["opt_F"], final_b["opt_F"])
     np.testing.assert_array_equal(final_a["opt_X"], final_b["opt_X"])
+
+
+def test_fed_basis_atom_economy_penalizes_acid_overfeeding() -> None:
+    from src.sustainability.greenscope import _acid_unit_atom_economy
+
+    assert _acid_unit_atom_economy(10.0, 5.0, 100.0) < _acid_unit_atom_economy(10.0, 5.0, 10.0)
+    assert _acid_unit_atom_economy(10.0, 5.0, 0.0) > 0.0
+
+
+def test_fed_basis_changes_pickling_only_and_penalizes_renewal_acid() -> None:
+    items = 2_000_000
+    early_policy = OperatingPolicy(*BASELINE_POLICY.to_array()[:-1], pickling_renewal_fe_g_per_l=60.0)
+    kwargs = {"base_seed": 11, "n_samples": 2, "items": items}
+    limiting = evaluate_policy(early_policy, **kwargs)
+    fed = evaluate_policy(early_policy, fed_atom_economy=True, **kwargs)
+    ae = Indicator.ATOM_ECONOMY
+    np.testing.assert_allclose(fed.unit_scores[:, 4, ae], limiting.unit_scores[:, 4, ae])
+    assert not np.allclose(fed.unit_scores[:, 2, ae], limiting.unit_scores[:, 2, ae])
+    late_fed = evaluate_policy(BASELINE_POLICY, fed_atom_economy=True, **kwargs)
+    assert late_fed.unit_scores[:, 2, ae].mean() > fed.unit_scores[:, 2, ae].mean()

@@ -11,7 +11,7 @@ import json
 import logging
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Final
+from typing import Final, cast
 
 import numpy as np
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
@@ -279,6 +279,10 @@ def _write_summary(
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
 
 
+NO_BACKSLIDE_COLUMNS: Final = (2, 3)
+"""Objective columns of the no-backsliding veto: E[V_l-poll] and E[V_WT] (absolute environmental flows)."""
+
+
 def prepare_selection(
     run_dir: Path,
     out_dir: Path,
@@ -286,11 +290,15 @@ def prepare_selection(
     n_jobs: int = 1,
     weights: np.ndarray | None = None,
     cost_scenario: str | None = None,
+    no_backsliding: bool = True,
 ) -> CompromiseResult:
-    """Re-evaluate the front at the reporting budget and select the compromise among its feasible designs.
+    """Re-evaluate the front at the reporting budget and select the compromise among its eligible designs.
 
     The search runs on a reduced simulated year whose fixed annual costs do not scale with the pieces, so objectives
-    are only comparable with the deep Monte Carlo after re-evaluation at the reporting (full-year) budget.
+    are only comparable with the deep Monte Carlo after re-evaluation at the reporting (full-year) budget. With
+    `no_backsliding` (the default) the compromise is restricted to designs whose mean polluted-liquid and
+    water-intake volumes do not exceed the as-is operation (thesis stochastic draws), an aspiration-level veto:
+    the published utility is insensitive to absolute volumes, so an unguarded selection can trade them away.
 
     Args:
         run_dir: NSGA-II run directory.
@@ -299,29 +307,61 @@ def prepare_selection(
         n_jobs: joblib workers.
         weights: Objective weights; FAHP-derived defaults when None.
         cost_scenario: Cost scenario of the re-evaluation; the one the search used when None.
+        no_backsliding: Apply the veto on `NO_BACKSLIDE_COLUMNS` against the as-is operation.
 
     Returns:
         The compromise computed on the re-evaluated front.
 
     Raises:
-        ValueError: If no re-evaluated design satisfies the constraints.
+        ValueError: If no re-evaluated design satisfies the constraints (and the veto, when active).
     """
     checkpoint = load_checkpoint(run_dir)
     config, x = checkpoint["config"], np.atleast_2d(checkpoint["opt_X"])
     scenario = cost_scenario or config["cost_scenario"]
-    summary = reevaluate_front(x, scenario, config["seed"], config["n_mc_samples"], front_items, n_jobs)
-    feasible = (summary.constraints[:-1] <= 0).all(axis=1)
-    if not feasible.any():
-        message = f"No design of the front is feasible at {front_items} items per year"
-        logger.error(message)
-        raise ValueError(message)
-    _save_front(out_dir, x, summary, front_items, scenario)
-    compromise = select_compromise(x[feasible], summary.robust_objectives[:-1][feasible], weights)
+    fed = bool(config.get("fed_atom_economy", False))
+    summary = reevaluate_front(x, scenario, config["seed"], config["n_mc_samples"], front_items, n_jobs, fed)
+    asis_f = _asis_objectives(config, front_items, n_jobs, scenario)
+    eligible = _eligible_mask(summary, asis_f if no_backsliding else None)
+    _save_front(out_dir, x, summary, asis_f, eligible, front_items, scenario)
+    compromise = select_compromise(x[eligible], summary.robust_objectives[:-1][eligible], weights)
     _save_compromise(out_dir, compromise)
     return compromise
 
 
-def _save_front(out_dir: Path, x: np.ndarray, summary: BatchSummary, items: int, scenario: str = "") -> None:
+def _asis_objectives(config: dict[str, object], items: int, n_jobs: int, scenario: str) -> np.ndarray:
+    evaluation = evaluate_policy(
+        None,
+        int(cast(int, config["seed"])),
+        int(cast(int, config["n_mc_samples"])),
+        items,
+        n_jobs=n_jobs,
+        costs=get_cost_scenario(scenario),
+        fed_atom_economy=bool(config.get("fed_atom_economy", False)),
+    )
+    return evaluation.objective_means
+
+
+def _eligible_mask(summary: BatchSummary, asis_f: np.ndarray | None) -> np.ndarray:
+    eligible = (summary.constraints[:-1] <= 0).all(axis=1)
+    if asis_f is not None:
+        for column in NO_BACKSLIDE_COLUMNS:
+            eligible &= summary.mean_objectives[:-1, column] <= asis_f[column]
+    if not eligible.any():
+        message = "No design of the front is feasible" + ("" if asis_f is None else " under the no-backsliding veto")
+        logger.error(message)
+        raise ValueError(message)
+    return eligible
+
+
+def _save_front(
+    out_dir: Path,
+    x: np.ndarray,
+    summary: BatchSummary,
+    asis_f: np.ndarray,
+    eligible: np.ndarray,
+    items: int,
+    scenario: str = "",
+) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         out_dir / "front.npz",
@@ -329,11 +369,13 @@ def _save_front(out_dir: Path, x: np.ndarray, summary: BatchSummary, items: int,
         f=summary.robust_objectives[:-1],
         f_mean=summary.mean_objectives[:-1],
         g=summary.constraints[:-1],
+        eligible=eligible,
         raw_material_masses_kg=summary.raw_material_masses_kg[:-1],
         baseline_f=summary.robust_objectives[-1],
         baseline_f_mean=summary.mean_objectives[-1],
         baseline_g=summary.constraints[-1],
         baseline_raw_material_masses_kg=summary.raw_material_masses_kg[-1],
+        asis_f=asis_f,
         items=items,
         cost_scenario=scenario,
     )
@@ -349,6 +391,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--front-items", type=int, default=FULL_YEAR_ITEMS)
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--cost-scenario", type=str, default=None, choices=sorted(COST_SCENARIOS))
+    parser.add_argument("--no-veto", action="store_true", help="Disable the no-backsliding veto on the selection")
     return parser.parse_args()
 
 
@@ -357,7 +400,9 @@ def main() -> None:
     args = _parse_args()
     config = load_checkpoint(args.run_dir)["config"]
     scenario = args.cost_scenario or config["cost_scenario"]
-    compromise = prepare_selection(args.run_dir, args.out_dir, args.front_items, args.workers, cost_scenario=scenario)
+    compromise = prepare_selection(
+        args.run_dir, args.out_dir, args.front_items, args.workers, cost_scenario=scenario, no_backsliding=not args.no_veto
+    )
     logger.info("Compromise: x=%s, f=%s, mu=%.4f", compromise.x, compromise.f, compromise.overall)
     characterize_designs(
         OperatingPolicy.from_array(compromise.x),

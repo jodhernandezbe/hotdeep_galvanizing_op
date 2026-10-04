@@ -13,7 +13,7 @@ from typing import Mapping
 
 import numpy as np
 
-from src.common.constants import MW_FE, MW_FEO, MW_H, MW_HCL, MW_NAOH, MW_ZN
+from src.common.constants import MW_FE, MW_FECL2, MW_FEO, MW_H, MW_HCL, MW_NAOH, MW_ZN
 from src.process.densities import hcl_solution_density, naoh_solution_density
 from src.sustainability.costs import THESIS_COSTS, CostParameters, default_costs
 from src.sustainability.hazard import ACUTE_TOXICITY, AIR_HAZARD, WATER_HAZARD, compute_physical_values
@@ -63,6 +63,10 @@ _PF_SO2[Compound.HYDROCHLORIC_ACID] = 0.88
 _PF_SO2[Compound.AMMONIUM_HYDROXIDE] = 1.88
 _PF_HYDROELECTRIC = 4.0
 _NATURAL_GAS_FACTOR = 25 * 1e-6 / 1.99714
+GRID_CO2_KG_PER_KWH_UPME_2024 = 0.220
+"""Colombian grid (SIN) emission factor for GHG inventories, UPME 2024 [kgCO2e/kWh]."""
+NATURAL_GAS_CO2_KG_PER_J = 56.06e-9 / 0.737
+"""Colombian generic natural gas, FECOC/UPME (56.06 kgCO2/GJ of fuel) over the thesis boiler efficiency [kgCO2/J of duty]."""
 _JOULE_TO_KWH = 2.78e-7
 _FLUXING_SOLUTION_DENSITY = 1030.0
 _WATER_DENSITY = 1000.0
@@ -129,6 +133,9 @@ class _Balance:
     fe2_fluxing_kg: float
     surface_mass_kg: float
     costs: CostParameters = THESIS_COSTS
+    gas_co2_kg_per_j: float = _NATURAL_GAS_FACTOR
+    grid_co2_kg_per_kwh: float = _PF_HYDROELECTRIC
+    fed_atom_economy: bool = False
 
     @property
     def product(self) -> float:
@@ -173,10 +180,10 @@ def _emission_indicator(bal: _Balance, factors: np.ndarray, include_energy: bool
     for unit in _OUTPUT_ROWS:
         total = bal.output_mass(unit) @ factors
         if include_energy and unit in _GAS_HEATED_UNITS:
-            total += bal.energy_j[unit] * _NATURAL_GAS_FACTOR
+            total += bal.energy_j[unit] * bal.gas_co2_kg_per_j
         result[unit] = total / bal.product
     if include_energy:
-        result[UnitProcess.DRYING] = _PF_HYDROELECTRIC * bal.energy_j[UnitProcess.DRYING] * _JOULE_TO_KWH / bal.product
+        result[UnitProcess.DRYING] = bal.grid_co2_kg_per_kwh * bal.energy_j[UnitProcess.DRYING] * _JOULE_TO_KWH / bal.product
     return result
 
 
@@ -254,13 +261,25 @@ def _atom_economy(bal: _Balance) -> np.ndarray:
         {
             UnitProcess.DEGREASING: out[OutputStream.SPENT_DEGREASING, Compound.SODIUM_CARBOXYLATES] / soap,
             UnitProcess.RINSING_1: 1.0,
-            UnitProcess.PICKLING: MW_FE * bal.fe2_pickling_kg / ((MW_FEO + 2 * MW_HCL) * 0.8825 * fe_in_rust),
+            UnitProcess.PICKLING: (
+                _acid_unit_atom_economy(
+                    bal.fe2_pickling_kg, 0.8825 * rust, inp[InputStream.PICKLING_SOLUTION, Compound.HYDROCHLORIC_ACID]
+                )
+                if bal.fed_atom_economy
+                else MW_FE * bal.fe2_pickling_kg / ((MW_FEO + 2 * MW_HCL) * 0.8825 * fe_in_rust)
+            ),
             UnitProcess.RINSING_2: 1.0,
             UnitProcess.FLUXING: MW_FE * bal.fe2_fluxing_kg / ((MW_FEO + 2 * MW_H) * 0.1175 * fe_in_rust),
             UnitProcess.DRYING: 1.0,
             UnitProcess.GALVANIZING: _galvanizing_atom_economy(bal),
         },
     )
+
+
+def _acid_unit_atom_economy(fe2_kg: float, rust_kg: float, acid_fed_kg: float) -> float:
+    product_kg = fe2_kg * MW_FECL2 / MW_FE
+    reagents_kg = rust_kg + acid_fed_kg
+    return product_kg / reagents_kg if reagents_kg > 0 else 1.0
 
 
 def _galvanizing_atom_economy(bal: _Balance) -> float:
@@ -608,13 +627,17 @@ def compute_greenscope(
     *,
     preserve_thesis_quirks: bool = PRESERVE_THESIS_QUIRKS,
     costs: CostParameters | None = None,
+    fed_atom_economy: bool = False,
 ) -> GreenscopeResult:
     """Compute GREENSCOPE indicators, reference values and scores.
 
     With ``preserve_thesis_quirks=True`` (default) the thesis behaviour is reproduced: the atmospheric
     acidification potential (SO2 equivalents) overwrites the photochemical oxidation column and the
-    acidification column stays at zero (annex D.4, ``G_I(:,5)`` assigned twice). With ``False`` each
-    indicator goes in its own column.
+    acidification column stays at zero (annex D.4, ``G_I(:,5)`` assigned twice), and the thesis energy
+    emission factors are kept. With ``False`` each indicator goes in its own column and the energy
+    emission factors are the sourced ones: the UPME 2024 Colombian grid factor for the electric dryer
+    and the IPCC natural-gas factor over the boiler efficiency for the gas-heated baths
+    (docs/MATLAB_PORT_NOTES.md).
 
     Args:
         input_streams: Input mass matrix [kg], shape (12, 17); rows per ``InputStream``.
@@ -628,6 +651,13 @@ def compute_greenscope(
         steel_surface_mass_kg: Mass of the steel surface reacting with zinc [kg].
         preserve_thesis_quirks: Reproduce the thesis' column assignment for POCP/AAP.
         costs: Prices and labor of the COM indicator; `default_costs(preserve_thesis_quirks)` when None.
+        fed_atom_economy: Compute the pickling atom economy over the reagents actually fed (rust
+            share plus the acid charged, Ruiz-Mercado's general form) instead of the thesis'
+            limiting-reagent basis, which is a rust-dissolution conversion and cannot penalize
+            acid overfeeding. The fluxing unit keeps the thesis basis: its reacting iron arrives
+            as an internal transfer (residual rust) and its chloride comes from the bath salts,
+            so a fed-reagent denominator is not definable from the stored input streams
+            (docs/MATLAB_PORT_NOTES.md).
 
     Returns:
         Indicators, best and worst reference values and scores, each of shape (7, 17).
@@ -644,6 +674,9 @@ def compute_greenscope(
         fe2_fluxing_kg=fe2_mass_fluxing_kg,
         surface_mass_kg=steel_surface_mass_kg,
         costs=default_costs(preserve_thesis_quirks) if costs is None else costs,
+        gas_co2_kg_per_j=_NATURAL_GAS_FACTOR if preserve_thesis_quirks else NATURAL_GAS_CO2_KG_PER_J,
+        grid_co2_kg_per_kwh=_PF_HYDROELECTRIC if preserve_thesis_quirks else GRID_CO2_KG_PER_KWH_UPME_2024,
+        fed_atom_economy=fed_atom_economy,
     )
     indicators = _assemble(_indicator_columns(balance, preserve_thesis_quirks))
     best, worst = _reference_matrices(balance, indicators)

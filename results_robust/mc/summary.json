@@ -1,0 +1,150 @@
+{
+  "cost_scenario": "market2025",
+  "asis": {
+    "policy": null,
+    "p_sustainable": 0.4560629881710987,
+    "p_sustainable_empirical": 0.0,
+    "indicators": {
+      "utility_pct": {
+        "mean": 79.26061592520314,
+        "std": 0.054297865720034894,
+        "ci_lower": 79.25724648821488,
+        "ci_upper": 79.2639853621914
+      },
+      "com_usd": {
+        "mean": 1871214.3914099592,
+        "std": 11981.105687855876,
+        "ci_lower": 1870470.90766286,
+        "ci_upper": 1871957.8751570585
+      },
+      "polluted_liquid_m3": {
+        "mean": 133.6831701911604,
+        "std": 11.79457846195841,
+        "ci_lower": 132.95126133242786,
+        "ci_upper": 134.41507904989294
+      },
+      "water_intake_m3": {
+        "mean": 1038.265658926781,
+        "std": 11.4781967223244,
+        "ci_lower": 1037.5533830374443,
+        "ci_upper": 1038.9779348161178
+      },
+      "mean_coating_thickness_um": {
+        "mean": 114.25179287237638,
+        "std": 0.14206469083707526,
+        "ci_lower": 114.24297709264572,
+        "ci_upper": 114.26060865210705
+      },
+      "defect_fraction": {
+        "mean": 0.04124555824624263,
+        "std": 0.0007298249287828457,
+        "ci_lower": 0.041200269189713576,
+        "ci_upper": 0.04129084730277169
+      }
+    }
+  },
+  "baseline": {
+    "policy": {
+      "degreasing_temperature_c": 50.0,
+      "pickling_hcl_pct": 17.0,
+      "pickling_dip_time_s": 900.0,
+      "fluxing_temperature_c": 50.0,
+      "fluxing_ph_target": 4.5,
+      "fluxing_salt_g_per_l": 400.0,
+      "galvanizing_temperature_c": 450.0,
+      "pickling_renewal_fe_g_per_l": 150.0
+    },
+    "p_sustainable": 0.4735543251080041,
+    "p_sustainable_empirical": 0.0,
+    "indicators": {
+      "utility_pct": {
+        "mean": 79.57135716773762,
+        "std": 0.049017442733660675,
+        "ci_lower": 79.56831540573782,
+        "ci_upper": 79.57439892973741
+      },
+      "com_usd": {
+        "mean": 1862228.8197635585,
+        "std": 11573.543691529614,
+        "ci_lower": 1861510.6271480208,
+        "ci_upper": 1862947.0123790961
+      },
+      "polluted_liquid_m3": {
+        "mean": 134.27827471154038,
+        "std": 12.204377756858769,
+        "ci_lower": 133.5209358863866,
+        "ci_upper": 135.03561353669414
+      },
+      "water_intake_m3": {
+        "mean": 1038.745401262545,
+        "std": 12.093131858535065,
+        "ci_lower": 1037.9949657666407,
+        "ci_upper": 1039.4958367584495
+      },
+      "mean_coating_thickness_um": {
+        "mean": 114.24665307869279,
+        "std": 0.003878223300260653,
+        "ci_lower": 114.24641241676504,
+        "ci_upper": 114.24689374062054
+      },
+      "defect_fraction": {
+        "mean": 0.03691466939392392,
+        "std": 2.877222906016076e-05,
+        "ci_lower": 0.03691288394229438,
+        "ci_upper": 0.036916454845553455
+      }
+    }
+  },
+  "optimal": {
+    "policy": {
+      "degreasing_temperature_c": 42.376522361729606,
+      "pickling_hcl_pct": 17.90489507254464,
+      "pickling_dip_time_s": 795.8770676144485,
+      "fluxing_temperature_c": 59.77557965525395,
+      "fluxing_ph_target": 4.627112730701617,
+      "fluxing_salt_g_per_l": 306.20132518111353,
+      "galvanizing_temperature_c": 454.9095907633542,
+      "pickling_renewal_fe_g_per_l": 122.68523012254339
+    },
+    "p_sustainable": 0.6518163940966586,
+    "p_sustainable_empirical": 1.0,
+    "indicators": {
+      "utility_pct": {
+        "mean": 82.32113485829527,
+        "std": 0.01857454794544956,
+        "ci_lower": 82.31998222056157,
+        "ci_upper": 82.32228749602896
+      },
+      "com_usd": {
+        "mean": 2175822.444821667,
+        "std": 17721.437712925504,
+        "ci_lower": 2174722.7465752736,
+        "ci_upper": 2176922.1430680603
+      },
+      "polluted_liquid_m3": {
+        "mean": 979.636975566867,
+        "std": 25.290305162829412,
+        "ci_lower": 978.0675936302064,
+        "ci_upper": 981.2063575035277
+      },
+      "water_intake_m3": {
+        "mean": 1834.408419851076,
+        "std": 23.904844099018092,
+        "ci_lower": 1832.9250122651988,
+        "ci_upper": 1835.891827436953
+      },
+      "mean_coating_thickness_um": {
+        "mean": 127.2844078471198,
+        "std": 0.004353318791326318,
+        "ci_lower": 127.2841377032907,
+        "ci_upper": 127.2846779909489
+      },
+      "defect_fraction": {
+        "mean": 0.013145506488822945,
+        "std": 1.8190135225019604e-05,
+        "ci_lower": 0.013144377705699777,
+        "ci_upper": 0.013146635271946113
+      }
+    }
+  }
+}

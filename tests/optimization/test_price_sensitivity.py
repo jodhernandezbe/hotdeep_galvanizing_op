@@ -30,7 +30,7 @@ def tiny_front(tmp_path_factory: pytest.TempPathFactory) -> Path:
     )
     run_dir = run(config)
     out_dir = tmp_path_factory.mktemp("sens_mc")
-    prepare_selection(run_dir, out_dir, front_items=TINY["items"], n_jobs=1)
+    prepare_selection(run_dir, out_dir, front_items=TINY["items"], n_jobs=1, no_backsliding=False)
     return out_dir / "front.npz"
 
 

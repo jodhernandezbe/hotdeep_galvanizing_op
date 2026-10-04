@@ -63,6 +63,7 @@ class RunConfig:
         checkpoint_every: Checkpoint interval [generations].
         out_dir: Run directory.
         cost_scenario: Name of the COM cost scenario (`thesis_corrected`, `thesis` or `market2025`).
+        fed_atom_economy: Fed-basis atom economy for the acid units (instrument sensitivity; see `compute_greenscope`).
         resume_from: Checkpoint to continue from (file name in the run directory, or `latest`); empty starts afresh.
     """
 
@@ -78,6 +79,7 @@ class RunConfig:
     checkpoint_every: int = DEFAULT_CHECKPOINT_EVERY
     out_dir: str = DEFAULT_OUTPUT_DIR
     cost_scenario: str = THESIS_CORRECTED_COSTS.name
+    fed_atom_economy: bool = False
     resume_from: str = ""
 
 
@@ -179,7 +181,12 @@ def run(config: RunConfig) -> Path:
     """
     run_dir = _prepare_run_dir(config)
     problem = HdgRobustProblem(
-        config.n_mc_samples, config.items, config.seed, config.n_jobs, costs=get_cost_scenario(config.cost_scenario)
+        config.n_mc_samples,
+        config.items,
+        config.seed,
+        config.n_jobs,
+        costs=get_cost_scenario(config.cost_scenario),
+        fed_atom_economy=config.fed_atom_economy,
     )
     state = _resume_state(config, run_dir)
     offset, spent = (0, 0) if state is None else (state.generation - 1, state.n_evaluations)
@@ -270,7 +277,8 @@ def _build_termination(config: RunConfig, problem: HdgRobustProblem, state: Resu
 
 def _prepare_run_dir(config: RunConfig) -> Path:
     scenario = "" if config.cost_scenario == THESIS_CORRECTED_COSTS.name else f"_{config.cost_scenario}"
-    run_dir = Path(config.out_dir) / f"nsga2{scenario}_seed{config.seed}"
+    instrument = "_fedae" if config.fed_atom_economy else ""
+    run_dir = Path(config.out_dir) / f"nsga2{scenario}{instrument}_seed{config.seed}"
     run_dir.mkdir(parents=True, exist_ok=True)
     original = run_dir / "config_before_resume.json"
     if config.resume_from and not original.exists() and (run_dir / CONFIG_FILENAME).exists():
@@ -323,6 +331,7 @@ def _parse_args() -> RunConfig:
     parser.add_argument("--checkpoint-every", type=int, default=DEFAULT_CHECKPOINT_EVERY)
     parser.add_argument("--out-dir", type=str, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--cost-scenario", type=str, default=THESIS_CORRECTED_COSTS.name, choices=sorted(COST_SCENARIOS))
+    parser.add_argument("--fed-atom-economy", action="store_true", help="Fed-basis atom economy (instrument sensitivity)")
     parser.add_argument("--resume", type=str, default="", help="Checkpoint file name or 'latest' to continue a run")
     args = parser.parse_args()
     return RunConfig(
@@ -336,6 +345,7 @@ def _parse_args() -> RunConfig:
         checkpoint_every=args.checkpoint_every,
         out_dir=args.out_dir,
         cost_scenario=args.cost_scenario,
+        fed_atom_economy=args.fed_atom_economy,
         resume_from=args.resume,
     )
 

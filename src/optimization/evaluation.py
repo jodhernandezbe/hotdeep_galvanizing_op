@@ -151,6 +151,7 @@ def evaluate_policy(
     preserve_thesis_quirks: bool = False,
     n_jobs: int = 1,
     costs: CostParameters | None = None,
+    fed_atom_economy: bool = False,
 ) -> PolicyEvaluation:
     """Evaluate one policy over a common-random-number Monte Carlo batch.
 
@@ -163,6 +164,7 @@ def evaluate_policy(
         preserve_thesis_quirks: Thesis-faithful mode when True; corrected (mass-conserving) mode when False.
         n_jobs: joblib workers; 1 runs serially in-process.
         costs: Cost scenario of the COM indicator; thesis prices in thesis mode, unit-corrected thesis prices otherwise.
+        fed_atom_economy: Fed-basis atom economy for the acid units (see `compute_greenscope`).
 
     Returns:
         Per-sample distributions of the objectives and constraint quantities.
@@ -170,10 +172,14 @@ def evaluate_policy(
     weight_vector = thesis_indicator_weights() if weights is None else np.asarray(weights, dtype=float)
     seeds = sample_seeds(base_seed, n_samples)
     if n_jobs == 1:
-        rows = [_evaluate_sample(policy, seed, items, weight_vector, preserve_thesis_quirks, costs) for seed in seeds]
+        rows = [
+            _evaluate_sample(policy, seed, items, weight_vector, preserve_thesis_quirks, costs, fed_atom_economy)
+            for seed in seeds
+        ]
     else:
         parallel_rows = Parallel(n_jobs=n_jobs)(
-            delayed(_evaluate_sample)(policy, seed, items, weight_vector, preserve_thesis_quirks, costs) for seed in seeds
+            delayed(_evaluate_sample)(policy, seed, items, weight_vector, preserve_thesis_quirks, costs, fed_atom_economy)
+            for seed in seeds
         )
         rows = cast(list[dict[str, np.ndarray | float]], list(parallel_rows))
     return _stack(rows)
@@ -186,10 +192,11 @@ def _evaluate_sample(
     weights: np.ndarray,
     preserve_thesis_quirks: bool,
     costs: CostParameters | None,
+    fed_atom_economy: bool = False,
 ) -> dict[str, np.ndarray | float]:
     rng = np.random.default_rng(seed)
     year = simulate_year(items, rng, preserve_thesis_quirks, policy)
-    evaluation, greenscope = evaluate_year_detailed(year, weights, preserve_thesis_quirks, costs)
+    evaluation, greenscope = evaluate_year_detailed(year, weights, preserve_thesis_quirks, costs, fed_atom_economy)
     return {
         "process_utility": evaluation.process_utility,
         "quality_utility_pct": evaluation.quality_utility_pct,

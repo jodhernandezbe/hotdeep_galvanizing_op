@@ -130,3 +130,17 @@ Consistent with the 12–18 % wt HCl decision-variable range. Peer-reviewed supp
 - GREENSCOPE methodology (Ruiz-Mercado et al.) and fuzzy-AHP (Chang 1996 extent analysis).
 - NSGA-II (Deb et al. 2002) and pymoo (Blank & Deb 2020) for the methods section.
 - Fuzzy compromise / max-min satisfaction MCDM on Pareto fronts.
+
+## Energy emission factors (corrected mode)
+
+The thesis energy emission factors are kept verbatim in thesis mode and replaced by sourced Colombian factors in
+corrected mode (`src/sustainability/greenscope.py`):
+
+| Factor | Thesis (code) | Corrected | Source |
+|---|---|---|---|
+| Electricity (dryer) | 4 kgCO₂/kWh (Table A-3 prints 43) | 0.220 kgCO₂e/kWh | UPME, FE del SIN 2024 for GHG inventories (`upme2024fe`); XM reported 164.38 g/kWh for recent generation |
+| Natural gas (heated baths) | 25·10⁻⁶/1.99714 kgCO₂/J of duty ≈ 12.5 kgCO₂/MJ | 56.06 kgCO₂/GJ of fuel ÷ 0.737 boiler efficiency | FECOC/UPME 2016, generic Colombian natural gas (`upme2016fecoc`); the IPCC 2006 default (56.1 tCO₂/TJ) is equal to 3 figures |
+
+The thesis gas chain is ~220× the FECOC value; its divisor 1.99714 is within 1 % of FECOC's per-m³ factor
+(1.9806 kgCO₂/m³), which suggests a units mix-up in the original listing. The electric factor is the grid (SIN)
+inventory factor, not a hydropower life-cycle value, because the plant buys grid electricity in Colombia.

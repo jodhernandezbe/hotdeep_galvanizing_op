@@ -164,7 +164,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     arguments = _parse_args()
     with np.load(arguments.mc_dir / "front.npz") as data:
-        feasible = (data["g"] <= 0).all(axis=1)
+        feasible = data["eligible"] if "eligible" in data.files else (data["g"] <= 0).all(axis=1)
         report = analyze_weights(
             data["x"][feasible], data["f"][feasible], np.random.default_rng(arguments.seed), arguments.draws
         )

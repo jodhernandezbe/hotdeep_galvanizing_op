@@ -126,8 +126,8 @@ def run_sensitivity(front_path: Path, out_dir: Path, scenarios: tuple[str, ...])
     """
     front = np.load(front_path, allow_pickle=True)
     reference = get_cost_scenario(str(front["cost_scenario"]))
-    feasible = (front["g"] <= 0).all(axis=1)
-    x, f, masses = front["x"][feasible], front["f_mean"][feasible], front["raw_material_masses_kg"][feasible]
+    eligible = front["eligible"] if "eligible" in front.files else (front["g"] <= 0).all(axis=1)
+    x, f, masses = front["x"][eligible], front["f_mean"][eligible], front["raw_material_masses_kg"][eligible]
     names = [reference.name, *[name for name in scenarios if name != reference.name]]
     objectives = {name: shift_com(f, masses, reference, get_cost_scenario(name)) for name in names}
     baseline_f, baseline_masses = np.atleast_2d(front["baseline_f_mean"]), np.atleast_2d(
@@ -136,7 +136,7 @@ def run_sensitivity(front_path: Path, out_dir: Path, scenarios: tuple[str, ...])
     baselines = {name: shift_com(baseline_f, baseline_masses, reference, get_cost_scenario(name))[0] for name in names}
     comparison = compare_scenarios(x, objectives, baselines)
     comparison["items"] = int(front["items"])
-    comparison["n_feasible"] = int(feasible.sum())
+    comparison["n_eligible"] = int(eligible.sum())
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "price_sensitivity.json").write_text(json.dumps(comparison, indent=2))
     arrays: dict[str, Any] = {"x": x, **objectives}

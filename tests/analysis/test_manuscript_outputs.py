@@ -53,7 +53,8 @@ def _make_mcdm_outputs(run_dir: Path, mc_dir: Path) -> None:
     checkpoint = load_checkpoint(run_dir)
     config, x = checkpoint["config"], checkpoint["opt_X"]
     summary = reevaluate_front(x, config["cost_scenario"], config["seed"], 2, 50_000)
-    _save_front(mc_dir, x, summary, 50_000)
+    eligible = (summary.constraints[:-1] <= 0).all(axis=1)
+    _save_front(mc_dir, x, summary, summary.mean_objectives[-1], eligible, 50_000)
     _save_compromise(mc_dir, select_compromise(x, summary.robust_objectives[:-1]))
     characterize_designs(OPTIMAL, base_seed=4, n_samples=3, items=50_000, out_dir=mc_dir)
 

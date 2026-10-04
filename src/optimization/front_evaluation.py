@@ -29,6 +29,7 @@ def reevaluate_front(
     n_samples: int,
     items: int,
     n_jobs: int = 1,
+    fed_atom_economy: bool = False,
 ) -> BatchSummary:
     """Summary of the given designs plus the baseline under one cost scenario.
 
@@ -41,12 +42,15 @@ def reevaluate_front(
         n_samples: Monte Carlo samples per design.
         items: Steel pieces per simulated year.
         n_jobs: joblib workers.
+        fed_atom_economy: Fed-basis atom economy for the acid units (see `compute_greenscope`).
 
     Returns:
         The batch summary with n + 1 rows; the last row is the baseline policy.
     """
     designs = np.vstack([_pad_legacy(np.atleast_2d(x)), BASELINE_POLICY.to_array()])
-    problem = HdgRobustProblem(n_samples, items, base_seed, n_jobs, costs=get_cost_scenario(scenario))
+    problem = HdgRobustProblem(
+        n_samples, items, base_seed, n_jobs, costs=get_cost_scenario(scenario), fed_atom_economy=fed_atom_economy
+    )
     return problem.batch_summary(designs)
 
 

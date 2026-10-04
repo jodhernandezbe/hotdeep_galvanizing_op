@@ -95,6 +95,7 @@ def evaluate_year_detailed(
     weights: np.ndarray,
     preserve_thesis_quirks: bool = True,
     costs: CostParameters | None = None,
+    fed_atom_economy: bool = False,
 ) -> tuple[YearEvaluation, GreenscopeResult]:
     """Evaluate a simulated year and also return the underlying GREENSCOPE result.
 
@@ -103,12 +104,13 @@ def evaluate_year_detailed(
         weights: Indicator weights from `build_indicator_weights`, length 18.
         preserve_thesis_quirks: Forwarded to GREENSCOPE (see `compute_greenscope`).
         costs: Cost scenario of the COM indicator; the fidelity mode's default when None.
+        fed_atom_economy: Forwarded to GREENSCOPE (see `compute_greenscope`).
 
     Returns:
         The evaluation and the GREENSCOPE result it was computed from (raw indicator values included).
     """
     _check_length(weights, N_INDICATORS + 1, "weights")
-    greenscope = _run_greenscope(year, preserve_thesis_quirks, costs)
+    greenscope = _run_greenscope(year, preserve_thesis_quirks, costs, fed_atom_economy)
     quality_pct = year.totals.quality_mass_weighted * PERCENT / year.totals.steel_kg
     standard_um = year.totals.standard_thickness_sum_um / year.totals.n_quality_pieces
     unit_utility = greenscope.score @ weights[:N_INDICATORS]
@@ -123,7 +125,9 @@ def evaluate_year_detailed(
     return evaluation, greenscope
 
 
-def _run_greenscope(year: YearResult, preserve_thesis_quirks: bool, costs: CostParameters | None) -> GreenscopeResult:
+def _run_greenscope(
+    year: YearResult, preserve_thesis_quirks: bool, costs: CostParameters | None, fed_atom_economy: bool = False
+) -> GreenscopeResult:
     balance = build_balance(year)
     return compute_greenscope(
         balance.input_streams,
@@ -136,6 +140,7 @@ def _run_greenscope(year: YearResult, preserve_thesis_quirks: bool, costs: CostP
         balance.steel_surface_kg,
         preserve_thesis_quirks=preserve_thesis_quirks,
         costs=costs,
+        fed_atom_economy=fed_atom_economy,
     )
 
 

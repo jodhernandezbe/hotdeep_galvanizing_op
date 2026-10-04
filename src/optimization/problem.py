@@ -101,6 +101,7 @@ def candidate_sample_scalars(
     weights: np.ndarray,
     preserve_thesis_quirks: bool,
     costs: CostParameters | None = None,
+    fed_atom_economy: bool = False,
 ) -> np.ndarray:
     """Simulate one Monte Carlo sample of one candidate and reduce it to the optimizer scalars.
 
@@ -111,6 +112,7 @@ def candidate_sample_scalars(
         weights: Indicator weights, length 18.
         preserve_thesis_quirks: Simulation mode.
         costs: Cost scenario of the COM indicator.
+        fed_atom_economy: Fed-basis atom economy for the acid units (see `compute_greenscope`).
 
     Returns:
         Array [U_P, COM, V_l-poll, V_WT, defect fraction, peak pickling Fe2+, peak fluxing Fe2+]
@@ -118,7 +120,7 @@ def candidate_sample_scalars(
     """
     policy = OperatingPolicy.from_array(np.asarray(x))
     year = simulate_year(items, np.random.default_rng(seed), preserve_thesis_quirks, policy)
-    evaluation, greenscope = evaluate_year_detailed(year, weights, preserve_thesis_quirks, costs)
+    evaluation, greenscope = evaluate_year_detailed(year, weights, preserve_thesis_quirks, costs, fed_atom_economy)
     indicators = greenscope.indicators
     head = np.array(
         [
@@ -154,6 +156,7 @@ class HdgRobustProblem(Problem):
         tail_fraction: float | None = TAIL_FRACTION,
         defect_quantile: float | None = DEFECT_QUANTILE,
         price_scenarios: tuple[str, ...] | None = PRICE_ROBUST_SCENARIOS,
+        fed_atom_economy: bool = False,
     ) -> None:
         """Configure the stochastic evaluation budget.
 
@@ -169,6 +172,7 @@ class HdgRobustProblem(Problem):
             defect_quantile: Quantile of the chance constraints; None constrains the means.
             price_scenarios: Scenario names of the worst-case cost objective; None or empty keeps
                 the evaluation scenario only.
+            fed_atom_economy: Fed-basis atom economy for the acid units (see `compute_greenscope`).
         """
         super().__init__(
             n_var=N_DECISION_VARIABLES,
@@ -187,6 +191,7 @@ class HdgRobustProblem(Problem):
         self.tail_fraction = tail_fraction
         self.defect_quantile = defect_quantile
         self.price_scenarios = price_scenarios
+        self.fed_atom_economy = fed_atom_economy
 
     def batch_summary(self, x: np.ndarray) -> BatchSummary:
         """Robust and mean Monte Carlo statistics for a batch of designs.
@@ -254,10 +259,14 @@ class HdgRobustProblem(Problem):
         if self.n_jobs == 1:
             return [self._one_job(row, seed) for row, seed in jobs]
         parallel_rows = Parallel(n_jobs=self.n_jobs)(
-            delayed(candidate_sample_scalars)(row, seed, self.items, self.weights, self.preserve_thesis_quirks, self.costs)
+            delayed(candidate_sample_scalars)(
+                row, seed, self.items, self.weights, self.preserve_thesis_quirks, self.costs, self.fed_atom_economy
+            )
             for row, seed in jobs
         )
         return cast(list[np.ndarray], list(parallel_rows))
 
     def _one_job(self, row: tuple[float, ...], seed: np.random.SeedSequence) -> np.ndarray:
-        return candidate_sample_scalars(row, seed, self.items, self.weights, self.preserve_thesis_quirks, self.costs)
+        return candidate_sample_scalars(
+            row, seed, self.items, self.weights, self.preserve_thesis_quirks, self.costs, self.fed_atom_economy
+        )
