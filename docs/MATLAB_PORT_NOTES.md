@@ -160,7 +160,7 @@ Thesis mode keeps the listing's factors verbatim. Corrected mode replaces them w
   factor applies, not a hydropower life-cycle value.
 - **Natural gas (heated baths):** listing `25e-6/1.99714` kgCO2 per J of duty ≈ 12.5 kgCO2/MJ → FECOC generic
   Colombian natural gas, 56.06 kgCO2/GJ of fuel over the 0.737 boiler efficiency (`upme2016fecoc`), ≈ 0.076 kgCO2/MJ
-  of duty. The listing is ~160x higher; its divisor 1.99714 is within 1 % of FECOC's per-m3 factor (1.9806 kgCO2/m3),
+  of duty (0.274 kgCO2/kWh of duty). The listing is ~164x higher; its divisor 1.99714 is within 1 % of FECOC's per-m3 factor (1.9806 kgCO2/m3),
   suggesting a units mix-up in the original chain.
 
 ## Instrument findings (GREENSCOPE as an optimization objective)
