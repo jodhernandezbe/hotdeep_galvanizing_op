@@ -47,15 +47,24 @@ def reevaluate_front(
     Returns:
         The batch summary with n + 1 rows; the last row is the baseline policy.
     """
-    designs = np.vstack([_pad_legacy(np.atleast_2d(x)), BASELINE_POLICY.to_array()])
+    designs = np.vstack([pad_legacy_designs(x), BASELINE_POLICY.to_array()])
     problem = HdgRobustProblem(
         n_samples, items, base_seed, n_jobs, costs=get_cost_scenario(scenario), fed_atom_economy=fed_atom_economy
     )
     return problem.batch_summary(designs)
 
 
-def _pad_legacy(x: np.ndarray) -> np.ndarray:
-    if x.shape[1] == N_DECISION_VARIABLES:
-        return x
-    trigger = np.full((x.shape[0], 1), THESIS_PICKLING_RENEWAL_FE_G_PER_L)
-    return np.hstack([x, trigger])
+def pad_legacy_designs(x: np.ndarray) -> np.ndarray:
+    """Bring a decision matrix to the current variable count.
+
+    Args:
+        x: Decision matrix, shape (n, `N_DECISION_VARIABLES`) or the legacy (n, 7).
+
+    Returns:
+        Matrix of shape (n, `N_DECISION_VARIABLES`); legacy rows get the thesis pickling-renewal trigger.
+    """
+    matrix = np.atleast_2d(np.asarray(x, dtype=float))
+    if matrix.shape[1] == N_DECISION_VARIABLES:
+        return matrix
+    trigger = np.full((matrix.shape[0], 1), THESIS_PICKLING_RENEWAL_FE_G_PER_L)
+    return np.hstack([matrix, trigger])

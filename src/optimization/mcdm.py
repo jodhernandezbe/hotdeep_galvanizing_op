@@ -9,9 +9,10 @@ Date: 2026-10-02
 import argparse
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Final, cast
+from typing import Any, Final, cast
 
 import numpy as np
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
@@ -19,7 +20,7 @@ from scipy.stats import t as student_t
 
 from src.analysis.critical_points import assess_sustainability
 from src.optimization.evaluation import DEEP_SAMPLES, FULL_YEAR_ITEMS, PolicyEvaluation, evaluate_policy
-from src.optimization.front_evaluation import reevaluate_front
+from src.optimization.front_evaluation import pad_legacy_designs, reevaluate_front
 from src.optimization.problem import BatchSummary
 from src.optimization.run_nsga2 import load_checkpoint
 from src.process.operating_policy import BASELINE_POLICY, OperatingPolicy
@@ -284,7 +285,7 @@ NO_BACKSLIDE_COLUMNS: Final = (2, 3)
 
 
 def prepare_selection(
-    run_dir: Path,
+    run_dir: Path | Sequence[Path],
     out_dir: Path,
     front_items: int = FULL_YEAR_ITEMS,
     n_jobs: int = 1,
@@ -300,8 +301,12 @@ def prepare_selection(
     water-intake volumes do not exceed the as-is operation (thesis stochastic draws), an aspiration-level veto:
     the published utility is insensitive to absolute volumes, so an unguarded selection can trade them away.
 
+    Several run directories (independent seeds of the same problem) are pooled: their non-dominated sets are
+    stacked, re-evaluated under common random numbers and the compromise is selected on the union, which guards
+    the selection against a single search missing a narrow basin.
+
     Args:
-        run_dir: NSGA-II run directory.
+        run_dir: NSGA-II run directory, or several directories of runs that share scenario, budget and instrument.
         out_dir: Directory receiving `front.npz` and `compromise.npz`.
         front_items: Steel pieces per simulated year used to re-evaluate the front.
         n_jobs: joblib workers.
@@ -313,19 +318,40 @@ def prepare_selection(
         The compromise computed on the re-evaluated front.
 
     Raises:
-        ValueError: If no re-evaluated design satisfies the constraints (and the veto, when active).
+        ValueError: If no re-evaluated design satisfies the constraints (and the veto, when active), or if the
+            pooled runs do not share scenario, budget and instrument.
     """
-    checkpoint = load_checkpoint(run_dir)
-    config, x = checkpoint["config"], np.atleast_2d(checkpoint["opt_X"])
+    checkpoints = [load_checkpoint(path) for path in _as_run_dirs(run_dir)]
+    config, x, source_seed = _pool_fronts(checkpoints)
     scenario = cost_scenario or config["cost_scenario"]
     fed = bool(config.get("fed_atom_economy", False))
     summary = reevaluate_front(x, scenario, config["seed"], config["n_mc_samples"], front_items, n_jobs, fed)
     asis_f = _asis_objectives(config, front_items, n_jobs, scenario)
     eligible = _eligible_mask(summary, asis_f if no_backsliding else None)
-    _save_front(out_dir, x, summary, asis_f, eligible, front_items, scenario)
+    _save_front(out_dir, x, summary, asis_f, eligible, front_items, scenario, source_seed)
     compromise = select_compromise(x[eligible], summary.robust_objectives[:-1][eligible], weights)
     _save_compromise(out_dir, compromise)
     return compromise
+
+
+def _as_run_dirs(run_dir: Path | Sequence[Path]) -> list[Path]:
+    return [Path(run_dir)] if isinstance(run_dir, (str, Path)) else [Path(path) for path in run_dir]
+
+
+_POOL_KEYS: Final = ("cost_scenario", "n_mc_samples", "items", "fed_atom_economy")
+
+
+def _pool_fronts(checkpoints: list[dict[str, Any]]) -> tuple[dict[str, Any], np.ndarray, np.ndarray]:
+    reference = checkpoints[0]["config"]
+    for checkpoint in checkpoints[1:]:
+        mismatched = [k for k in _POOL_KEYS if checkpoint["config"].get(k) != reference.get(k)]
+        if mismatched:
+            message = f"Pooled runs differ in {mismatched}; only independent seeds of the same problem can be pooled"
+            logger.error(message)
+            raise ValueError(message)
+    designs = [pad_legacy_designs(c["opt_X"]) for c in checkpoints]
+    seeds = np.concatenate([np.full(len(d), int(c["config"]["seed"])) for d, c in zip(designs, checkpoints)])
+    return reference, np.vstack(designs), seeds
 
 
 def _asis_objectives(config: dict[str, object], items: int, n_jobs: int, scenario: str) -> np.ndarray:
@@ -361,11 +387,13 @@ def _save_front(
     eligible: np.ndarray,
     items: int,
     scenario: str = "",
+    source_seed: np.ndarray | None = None,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         out_dir / "front.npz",
         x=x,
+        source_seed=np.zeros(len(x), dtype=int) if source_seed is None else source_seed,
         f=summary.robust_objectives[:-1],
         f_mean=summary.mean_objectives[:-1],
         g=summary.constraints[:-1],
@@ -383,7 +411,9 @@ def _save_front(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fuzzy compromise selection and deep Monte Carlo characterization")
-    parser.add_argument("--run-dir", type=Path, required=True, help="NSGA-II run directory (results/checkpoints/...)")
+    parser.add_argument(
+        "--run-dir", type=Path, nargs="+", required=True, help="NSGA-II run directories (seeds of the same problem)"
+    )
     parser.add_argument("--out-dir", type=Path, default=Path("results/mc"))
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--n-samples", type=int, default=DEEP_SAMPLES)
@@ -398,7 +428,7 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     """Select the compromise from a finished run and characterize baseline vs. optimum."""
     args = _parse_args()
-    config = load_checkpoint(args.run_dir)["config"]
+    config = load_checkpoint(args.run_dir[0])["config"]
     scenario = args.cost_scenario or config["cost_scenario"]
     compromise = prepare_selection(
         args.run_dir, args.out_dir, args.front_items, args.workers, cost_scenario=scenario, no_backsliding=not args.no_veto

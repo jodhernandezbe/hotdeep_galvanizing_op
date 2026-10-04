@@ -156,3 +156,33 @@ def test_no_backsliding_veto_excludes_backsliding_designs(tmp_path: Path, monkey
     saved = np.load(tmp_path / "out" / "front.npz")
     assert not saved["eligible"][0] and saved["eligible"][1:].all()
     np.testing.assert_array_equal(saved["asis_f"], [0.0, 1.0, 5.0, 5.0])
+
+
+def test_pooled_seeds_are_stacked_and_tagged(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from src.optimization import mcdm
+    from src.optimization.run_nsga2 import RunConfig, run
+
+    runs = [
+        run(RunConfig(seed=s, pop_size=8, n_generations=2, n_mc_samples=2, items=50_000, out_dir=str(tmp_path / "runs")))
+        for s in (6, 7)
+    ]
+    sizes = [np.atleast_2d(np.load(r / "final.npz")["opt_X"]).shape[0] for r in runs]
+    n = sum(sizes)
+    objectives = np.column_stack([-np.arange(n, 0, -1.0), np.ones(n), np.ones(n), np.ones(n)])
+    objectives = np.vstack([objectives, [0.0, 1.0, 1.0, 1.0]])
+    monkeypatch.setattr(mcdm, "reevaluate_front", _fake_reevaluation(objectives, np.full((n + 1, 2), -1.0)))
+    monkeypatch.setattr(mcdm, "_asis_objectives", lambda *a, **k: np.array([0.0, 1.0, 5.0, 5.0]))
+    mcdm.prepare_selection(runs, tmp_path / "out", front_items=1, n_jobs=1)
+    saved = np.load(tmp_path / "out" / "front.npz")
+    assert saved["x"].shape == (n, 8)
+    assert list(np.unique(saved["source_seed"])) == [6, 7] and (saved["source_seed"] == 6).sum() == sizes[0]
+
+
+def test_pooling_rejects_runs_of_different_problems(tmp_path: Path) -> None:
+    from src.optimization import mcdm
+    from src.optimization.run_nsga2 import RunConfig, run
+
+    a = run(RunConfig(seed=6, pop_size=8, n_generations=2, n_mc_samples=2, items=50_000, out_dir=str(tmp_path / "a")))
+    b = run(RunConfig(seed=7, pop_size=8, n_generations=2, n_mc_samples=3, items=50_000, out_dir=str(tmp_path / "b")))
+    with pytest.raises(ValueError, match="Pooled runs differ"):
+        mcdm.prepare_selection([a, b], tmp_path / "out", front_items=1, n_jobs=1)
