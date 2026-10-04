@@ -297,9 +297,13 @@ PolicyEvaluation.objective_means -> (4,) [-E[U_P], E[COM], E[V_l-poll], E[V_WT]]
 
 front_evaluation.reevaluate_front(x, scenario, base_seed, n_samples, items, n_jobs)
     -> (F (n+1, 4), G (n+1, 2), masses (n+1, 7))   # last row = baseline; masses per RAW_MATERIAL_KEYS [kg]
-mcdm.prepare_selection(run_dir, out_dir, front_items=FULL_YEAR_ITEMS, n_jobs, weights=None) -> CompromiseResult
-#   re-evaluates the front at the reporting budget, selects among FEASIBLE designs, writes front.npz + compromise.npz
-#   front.npz carries raw_material_masses_kg / baseline_raw_material_masses_kg for the price sensitivity
+mcdm.prepare_selection(run_dir, out_dir, front_items=FULL_YEAR_ITEMS, n_jobs, weights=None,
+                       cost_scenario=None, no_backsliding=True) -> CompromiseResult
+#   re-evaluates the front at the reporting budget and selects among ELIGIBLE designs: feasible AND, with the
+#   default no-backsliding veto, mean V_l-poll and V_WT not above the as-is operation (policy=None, same CRN seeds).
+#   front.npz carries f/f_mean/g/eligible/asis_f and raw_material_masses_kg (+ baseline_*) for the sensitivities.
+#   HdgRobustProblem/evaluate_policy/reevaluate_front accept fed_atom_economy (instrument sensitivity: pickling AAE
+#   over rust share + HCl actually charged); RunConfig.fed_atom_economy names the run dir nsga2<scenario>_fedae_seed<seed>.
 mcdm.sustainability_probability(evaluation)  # thesis construct: U_P ~ N(mean, (U_max - mean)/3), band [0.8 U_max, U_max]
 mcdm.empirical_sustainability_probability(evaluation)  # degenerate fraction (per-sample ratio sigma ~ 0.06 pp); discussion only
 mcdm.characterize_designs(...)  # three designs: "asis" (policy=None, thesis draws), "baseline" (nominal), "optimal"
