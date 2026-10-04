@@ -144,3 +144,16 @@ corrected mode (`src/sustainability/greenscope.py`):
 The thesis gas chain (12.5 kgCO₂/MJ = 45 kgCO₂/kWh of duty) is ~164× the FECOC value on the same basis (0.0761 kgCO₂/MJ = 0.274 kgCO₂/kWh of duty: 56.06 kgCO₂/GJ ÷ 0.737); its divisor 1.99714 is within 1 % of FECOC's per-m³ factor
 (1.9806 kgCO₂/m³), which suggests a units mix-up in the original listing. The electric factor is the grid (SIN)
 inventory factor, not a hydropower life-cycle value, because the plant buys grid electricity in Colombia.
+
+### Which UPME grid factor (read from the primary document, 2026-10-04)
+
+`Soporte_calculo_Factor_de_Emision_2024.pdf` reports several SIN factors for 2024. The one used is the **GHG-inventory
+(carbon-footprint) factor, 0.220 tCO₂e/MWh**: "refleja la intensidad de emisiones de la generación de energía
+eléctrica en un periodo de un año" and "sirve para estimar las emisiones indirectas asociadas al consumo de energía
+eléctrica del SIN", i.e. an annual system average (all sources), appropriate for the attributional GWP of the
+electricity the plant buys. The other factors are **combined-margin** values for project baselines and must not be
+used for attributional accounting: 0.607 (energy-efficiency projects, first crediting period), 0.554 (second and
+third), 0.660 (wind and solar). They would only apply to a marginal question ("what is avoided by saving a MWh").
+The document does not state the hydro/thermal shares; any statement about the hydro share needs another source
+(XM). The XM figure of 164.38 gCO₂/kWh (generation) was not used because its year and method were not verifiable
+from the page.
