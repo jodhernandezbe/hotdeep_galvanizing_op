@@ -61,9 +61,18 @@ thesis drag-out, so the thesis trigger (150) in practice never fires. The fluxin
 cadence (54/year) stay **fixed**: the model has no downstream coupling for them (dross is drawn randomly and the
 rinses are sinks), so freeing them would fabricate improvement with no modeled penalty.
 
+### Search budget
+
+The search year must be large enough for the pickling bath to reach its Fe²⁺ plateau (~130 g/L), otherwise variable 8
+is inert: at 10⁶ pieces the peak is only ~69 g/L and no trigger in [60, 150] ever fires (search at 10⁶ pieces drifted
+the trigger randomly and the first full-year re-evaluations found compromises whose trigger had never been optimized).
+The final runs therefore use **3·10⁶ pieces per sample year** (peak ≈ 130 g/L, 0.35 s per sample) with **N = 60**
+common-random-number samples (CVaR tail = 6 years; chance constraints at the 57th worst of 60); the one-dimensional
+sweep `python -m src.analysis.trigger_sweep` shows the trade-off behind variable 8 at the full-year budget.
+
 ### Robust objectives (minimize) and chance constraints (g ≤ 0)
 
-Per candidate, N = 100 common-random-number samples (`np.random.SeedSequence(seed).spawn(N)`; renewals use a
+Per candidate, N common-random-number samples (N = 60 in the final runs) (`np.random.SeedSequence(seed).spawn(N)`; renewals use a
 dedicated stream so lots/ambient stay paired across candidates). The optimizer minimizes the CVaR at the 10 % tail
 of each objective — the mean of the worst 10 sampled years — instead of the plain mean:
 
@@ -96,7 +105,8 @@ P(sustainable) follows the thesis construct — U_P ~ N(mean, (U_max − mean)/3
 ### Reproducing the pipeline
 
 ```bash
-python -m src.optimization.run_nsga2 --seed 42 --workers 8 --cost-scenario market2025           # → results/checkpoints/nsga2_market2025_seed42/
+python -m src.optimization.run_nsga2 --seed 42 --workers 8 --cost-scenario market2025 --items 3000000 --n-mc-samples 60 --out-dir results/checkpoints_3m   # → results/checkpoints_3m/nsga2_market2025_seed42/
+python -m src.analysis.trigger_sweep --workers 8                                               # 1-D sweep of the renewal trigger → results/sweeps/
 # if interrupted: add `--resume latest` to the command above to continue from the last checkpoint
 python -m src.optimization.mcdm --run-dir results/checkpoints_final/nsga2_market2025_seed4{2,3,4} --workers 8  # pools the seeds' fronts, re-evaluates at full year, veto + selection, N=1000 → results/mc/
 python -m src.optimization.price_sensitivity                                                   # from results/mc/front.npz (full year, exact COM shift, no re-simulation) → results/sensitivity/
