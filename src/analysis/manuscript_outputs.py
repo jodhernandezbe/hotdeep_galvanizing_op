@@ -111,10 +111,11 @@ def figure_pareto(front: dict[str, np.ndarray], compromise: dict[str, Any], figu
         _reference_points(axis, front["asis_f"], front["baseline_f_mean"], best)
         axis.set_xlabel(r"$\mathrm{E}[U_P]$ [-]")
     full.set_ylabel(r"$\mathrm{E}[\mathrm{COM}]$ [$10^6$ USD/yr]")
-    full.set_title("(a) Whole non-dominated set")
-    zoom.set_title("(b) Designs eligible under the veto")
+    full.set_title("(a)", loc="left")
+    zoom.set_title("(b)", loc="left")
     figure.colorbar(scatter, ax=[full, zoom], label=r"$\mathrm{E}[V_{l\mathrm{-}poll}]$ [m$^3$/yr]", shrink=0.9)
-    full.legend(loc="upper left", fontsize=7)
+    handles, labels = full.get_legend_handles_labels()
+    figure.legend(handles, labels, loc="outside lower center", ncol=3, fontsize=7.5)
     return save_figure(figure, figures_dir, "figure1_pareto")
 
 
