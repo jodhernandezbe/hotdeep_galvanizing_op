@@ -102,14 +102,13 @@ mean U_P 16 710, P(sustainable) 0.456, critical units fluxing then pickling — 
 ## Sources for the fluxing overflow-bleed decision
 
 - [US 11091828 — Systems for removing impurities from galvanizing flux solution](https://patents.google.com/patent/US11091828):
-  contaminated flux pumped to a treatment tank, Fe2+ oxidized with H2O2, NH4OH to the pH that precipitates iron without
-  zinc, polymer-assisted settling.
+  contaminated flux circulated through a concentration loop where ozone oxidizes Fe2+, which then precipitates
+  (verified 2026-10-06; the earlier 'H2O2' description was wrong).
 - [US 10316400 — Systems and methods for removing impurities from galvanizing flux solution](https://patents.google.com/patent/US10316400):
   same family; notes that disposal of contaminated flux as hazardous waste is usually prohibitively expensive and that
   neutralization creates large sludge volumes while wasting the ZnCl2/NH4Cl salts.
-- [EP 0722001 — Regeneration of a flux bath by continuous flux stream withdrawal](https://data.epo.org/publication-server/rest/v1.2/publication-dates/19980617/patents/EP0722001NWB1/document.html):
-  constant side-stream withdrawal, H2O2 in stoichiometric amount, ammonia to hold pH 4, ferric hydroxide settled and the
-  decanted solution recycled.
+- EP 0722001 was listed here by mistake: it is an ion-exchange method for removing zinc from acid effluents, not a
+  flux-regeneration patent (verified 2026-10-06).
 - [US 6802912 — Deferrizing flux salt composition for flux baths](https://patents.google.com/patent/US6802912):
   iron carry-over into the flux bath cannot be fully avoided even with good rinsing; 1 g Fe forms ~25 g of hard zinc in
   the kettle (why the Fe limit matters).

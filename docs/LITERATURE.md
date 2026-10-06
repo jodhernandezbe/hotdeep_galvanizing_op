@@ -106,7 +106,7 @@ constraint; renewals are priced through COM and V_l-poll. Evidence:
 | Preflux contamination should be limited to about 0.5 % Fe (≈ 5 g/L) | [finishing.com Q&A, "Galvanizing Flux Bath Iron Contamination"](https://www.finishing.com/423/25.shtml) | Forum — find the primary source |
 | Iron is routinely kept at 1–1.8 g/L; some guides allow up to 10 g/L | [Metchem, flux filter press & regeneration](https://metchem.com/flux-press-regeneration-system-hot-dip-galvanizing/) (vendor) | Vendor |
 | Dumping the flux bath is prohibitively expensive as hazardous waste; neutralizing creates large sludge volumes; both waste the zinc ammonium chloride | [US 10316400](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/10316400), [US 11091828](https://patents.google.com/patent/US11091828) | Patents |
-| Regeneration (H₂O₂ oxidation of Fe²⁺, NH₄OH for pH, polymer-aided precipitation) instead of replacement | same two patents; [EP 0722001](https://data.epo.org/publication-server/rest/v1.2/publication-dates/19980617/patents/EP0722001NWB1/document.html) (see also `docs/MATLAB_PORT_NOTES.md`) | Patents |
+| Regeneration (oxidation of Fe²⁺ — ozone in the Cullivan patents — and precipitation) instead of replacement | the two Cullivan patents (ozone oxidation in a concentration loop, verified 2026-10-06). EP 0722001 was wrongly listed here: it is an ion-exchange method for zinc in acid effluents | Patents |
 | Iron entering the kettle forms hard zinc (≈ 1 g Fe → 25 g hard zinc), a zinc loss | [US 6802912](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/6802912) | Patent |
 | Iron in flux is tested weekly; low pH raises soluble iron and dross | [AGA knowledge base, flux quality](https://galvanizeit.org/knowledgebase/article/flux-quality-concentration-density-baume-flux-ratio-ph), [AGA, monitoring preflux pH](https://galvanizeit.org/knowledgebase/article/monitoring-ph-of-the-preflux-solution) | Trade association |
 
@@ -118,8 +118,9 @@ and [Regel-Rosocka, Pol. J. Chem. Technol. 2 (2007)](https://yadda.icm.edu.pl/ba
 
 ## Pickling bath (HCl): exhaustion limit
 
-Decision: constraint g₂ = E[peak pickling Fe²⁺] − 150 g/L. Evidence: regeneration/replacement is triggered at iron
-≈ 100–160 g/L with free acid near 45–50 g/L ([US 4209489](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/4209489));
+Decision: constraint g₂ = q95[peak pickling Fe²⁺] − 150 g/L (limit of the 2019 study). [US 4209489](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/4209489)
+only states that the acid is replaced once iron builds up; it gives no numeric limit (the earlier '100–160 g/L' attribution was
+wrong, checked 2026-10-06);
 fresh baths start near 15 % HCl (150 g/L); iron reaching ≈ 9 % wt forces drain and recharge (same patent family).
 Consistent with the 12–18 % wt HCl decision-variable range. Peer-reviewed support still to be added.
 
