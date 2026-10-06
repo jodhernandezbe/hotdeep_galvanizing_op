@@ -20,6 +20,7 @@ from matplotlib.patches import Rectangle
 from scipy.stats import gaussian_kde
 
 from src.analysis.plot_style import (
+    ACCENT_COLOR,
     BASELINE_COLOR,
     NEUTRAL_COLOR,
     OPTIMIZED_COLOR,
@@ -28,7 +29,7 @@ from src.analysis.plot_style import (
     save_figure,
 )
 from src.optimization.evaluation import PolicyEvaluation
-from src.optimization.mcdm import SUSTAINABILITY_THRESHOLD_PCT, utility_pct
+from src.optimization.mcdm import SUSTAINABILITY_THRESHOLD_PCT, sustainability_probability, utility_pct
 from src.sustainability.greenscope import Indicator
 from src.sustainability.streams import UnitProcess
 
@@ -71,7 +72,10 @@ POLICY_LABELS: Final = {
     "fluxing_ph_target": (r"pH$_{fluxing}$", "--"),
     "fluxing_salt_g_per_l": (r"$C_{salts}$", "g/L"),
     "galvanizing_temperature_c": (r"$T_{galvanizing}$", r"$^{\circ}$C"),
+    "pickling_renewal_fe_g_per_l": (r"$c_{Fe,trigger}$", "g/L"),
 }
+DESIGN_LABELS: Final = {"asis": "As-is operation", "baseline": "Nominal set-points", "optimal": "Compromise design"}
+DESIGN_COLORS: Final = {"asis": BASELINE_COLOR, "baseline": ACCENT_COLOR, "optimal": OPTIMIZED_COLOR}
 KPI_LABELS: Final = {
     "utility_pct": (r"$U_P$", r"\%"),
     "com_usd": ("COM", "USD"),
@@ -185,12 +189,11 @@ def _reference_points(axis: Axes, asis: np.ndarray, nominal: np.ndarray, best: n
     )
 
 
-def figure_radar(baseline: PolicyEvaluation, optimal: PolicyEvaluation, figures_dir: Path) -> list[Path]:
-    """Figure 2: 18-indicator radar chart of mean scores, baseline vs. optimized.
+def figure_radar(designs: dict[str, PolicyEvaluation], figures_dir: Path) -> list[Path]:
+    """Figure 2: 18-indicator radar chart of mean scores for the as-is, nominal and compromise designs.
 
     Args:
-        baseline: Deep Monte Carlo batch of the baseline design.
-        optimal: Deep Monte Carlo batch of the compromise design.
+        designs: Deep Monte Carlo batches keyed by design name (`DESIGN_LABELS` keys).
         figures_dir: Destination directory.
 
     Returns:
@@ -198,11 +201,10 @@ def figure_radar(baseline: PolicyEvaluation, optimal: PolicyEvaluation, figures_
     """
     angles = np.linspace(0, 2 * np.pi, len(RADAR_LABELS), endpoint=False)
     figure, axis = plt.subplots(figsize=(4.6, 4.6), subplot_kw={"projection": "polar"})
-    for evaluation, label, color in ((baseline, "Baseline", BASELINE_COLOR), (optimal, "Optimized", OPTIMIZED_COLOR)):
-        scores = evaluation.process_scores.mean(axis=0)
-        _radar_polygon(axis, angles, scores, label, color)
+    for name, evaluation in designs.items():
+        _radar_polygon(axis, angles, evaluation.process_scores.mean(axis=0), DESIGN_LABELS[name], DESIGN_COLORS[name])
     _radar_axes(axis, angles)
-    axis.legend(loc="upper right", bbox_to_anchor=(1.25, 1.1))
+    axis.legend(loc="upper right", bbox_to_anchor=(1.3, 1.12), fontsize=7)
     return save_figure(figure, figures_dir, "figure2_radar")
 
 
@@ -222,12 +224,11 @@ def _radar_axes(axis: Axes, angles: np.ndarray) -> None:
     axis.tick_params(pad=1)
 
 
-def figure_boxplots(baseline: PolicyEvaluation, optimal: PolicyEvaluation, figures_dir: Path) -> list[Path]:
-    """Figure 3: grouped boxplots of the critical-stage indicators, baseline vs. optimized.
+def figure_boxplots(designs: dict[str, PolicyEvaluation], figures_dir: Path) -> list[Path]:
+    """Figure 3: grouped boxplots of the critical-stage indicators for the as-is, nominal and compromise designs.
 
     Args:
-        baseline: Deep Monte Carlo batch of the baseline design.
-        optimal: Deep Monte Carlo batch of the compromise design.
+        designs: Deep Monte Carlo batches keyed by design name (`DESIGN_LABELS` keys).
         figures_dir: Destination directory.
 
     Returns:
@@ -235,54 +236,66 @@ def figure_boxplots(baseline: PolicyEvaluation, optimal: PolicyEvaluation, figur
     """
     figure, axes = plt.subplots(2, 3, figsize=(7.2, 4.6))
     for axis, (indicator, label) in zip(axes.ravel(), BOXPLOT_INDICATORS):
-        _stage_boxes(axis, baseline, optimal, indicator)
+        _stage_boxes(axis, designs, indicator)
         axis.set_ylabel(label)
-    handles = [Rectangle((0, 0), 1, 1, facecolor=color, alpha=0.6) for color in (BASELINE_COLOR, OPTIMIZED_COLOR)]
-    figure.legend(handles, ["Baseline", "Optimized"], loc="lower center", ncol=2, bbox_to_anchor=(0.5, -0.04))
+    handles = [Rectangle((0, 0), 1, 1, facecolor=DESIGN_COLORS[name], alpha=0.6) for name in designs]
+    labels = [DESIGN_LABELS[name] for name in designs]
+    figure.legend(handles, labels, loc="lower center", ncol=len(designs), bbox_to_anchor=(0.5, -0.04))
     return save_figure(figure, figures_dir, "figure3_critical_stage_boxplots")
 
 
-def _stage_boxes(axis: Axes, baseline: PolicyEvaluation, optimal: PolicyEvaluation, indicator: Indicator) -> None:
-    data = [design.stage_indicator(unit, indicator) for unit, _ in CRITICAL_STAGES for design in (baseline, optimal)]
-    boxes = axis.boxplot(data, positions=[1, 1.8, 3.2, 4.0], widths=0.6, patch_artist=True, showfliers=False)
-    for patch, color in zip(boxes["boxes"], [BASELINE_COLOR, OPTIMIZED_COLOR] * len(CRITICAL_STAGES)):
-        patch.set_facecolor(color)
+def _stage_boxes(axis: Axes, designs: dict[str, PolicyEvaluation], indicator: Indicator) -> None:
+    names = list(designs)
+    data = [designs[name].stage_indicator(unit, indicator) for unit, _ in CRITICAL_STAGES for name in names]
+    width, gap = 0.55, 0.7
+    positions = [
+        stage * (len(names) * gap + 1.0) + index * gap for stage in range(len(CRITICAL_STAGES)) for index in range(len(names))
+    ]
+    boxes = axis.boxplot(data, positions=positions, widths=width, patch_artist=True, showfliers=False)
+    for patch, name in zip(boxes["boxes"], names * len(CRITICAL_STAGES)):
+        patch.set_facecolor(DESIGN_COLORS[name])
         patch.set_alpha(0.6)
     for median in boxes["medians"]:
         median.set_color("black")
-    axis.set_xticks([1.4, 3.6])
+    centers = [np.mean(positions[stage * len(names) : (stage + 1) * len(names)]) for stage in range(len(CRITICAL_STAGES))]
+    axis.set_xticks(centers)
     axis.set_xticklabels([stage for _, stage in CRITICAL_STAGES])
 
 
-def figure_utility_density(baseline: PolicyEvaluation, optimal: PolicyEvaluation, figures_dir: Path) -> list[Path]:
-    """Figure 4: Gaussian KDE of U_P [%] with the LM_P = 80 % threshold shading.
+def figure_utility_density(designs: dict[str, PolicyEvaluation], figures_dir: Path) -> list[Path]:
+    """Figure 4: Gaussian KDE of U_P [%] for the three designs with the LM_P = 80 % threshold.
+
+    The legend reports P_sustainable as defined in the 2019 study (assumed normal, sigma = (U_max - mean)/3);
+    the empirical exceedance fraction is degenerate at full-year scale and is not shown.
 
     Args:
-        baseline: Deep Monte Carlo batch of the baseline design.
-        optimal: Deep Monte Carlo batch of the compromise design.
+        designs: Deep Monte Carlo batches keyed by design name (`DESIGN_LABELS` keys).
         figures_dir: Destination directory.
 
     Returns:
         Written file paths.
     """
     figure, axis = plt.subplots(figsize=(4.8, 3.4))
-    for evaluation, label, color in ((baseline, "Baseline", BASELINE_COLOR), (optimal, "Optimized", OPTIMIZED_COLOR)):
-        _density_curve(axis, utility_pct(evaluation), label, color)
+    for name, evaluation in designs.items():
+        probability = sustainability_probability(evaluation)
+        _density_curve(
+            axis, utility_pct(evaluation), f"{DESIGN_LABELS[name]} ($P_{{sust}}$ = {probability:.3f})", DESIGN_COLORS[name]
+        )
     axis.axvline(SUSTAINABILITY_THRESHOLD_PCT, color="black", linewidth=0.9, linestyle="--")
-    axis.text(SUSTAINABILITY_THRESHOLD_PCT + 0.4, axis.get_ylim()[1] * 0.95, r"$LM_P = 80\,\%$", va="top", fontsize=8)
+    axis.text(
+        SUSTAINABILITY_THRESHOLD_PCT - 0.02, axis.get_ylim()[1] * 0.95, r"$LM_P = 80\,\%$", va="top", ha="right", fontsize=8
+    )
     axis.set_xlabel(r"$U_P$ [% of attainable maximum]")
     axis.set_ylabel("Probability density")
-    axis.legend(loc="upper left")
+    axis.legend(loc="upper left", fontsize=7)
     return save_figure(figure, figures_dir, "figure4_utility_density")
 
 
 def _density_curve(axis: Axes, values: np.ndarray, label: str, color: str) -> None:
     density = gaussian_kde(values)
     grid = np.linspace(values.min() - 3 * values.std(), values.max() + 3 * values.std(), 400)
-    probability = float(np.mean(values >= SUSTAINABILITY_THRESHOLD_PCT))
-    axis.plot(grid, density(grid), color=color, label=f"{label} ($P_{{sost}}$ = {probability:.3f})")
-    exceed = grid >= SUSTAINABILITY_THRESHOLD_PCT
-    axis.fill_between(grid[exceed], density(grid[exceed]), color=color, alpha=0.25)
+    axis.plot(grid, density(grid), color=color, label=label)
+    axis.fill_between(grid, density(grid), color=color, alpha=0.15)
 
 
 SWEEP_PANELS: Final = (
@@ -374,14 +387,18 @@ def table_summary(summary: dict[str, Any], tables_dir: Path) -> Path:
     return path
 
 
+TABLE_DESIGNS: Final = ("asis", "baseline", "optimal")
+
+
 def _table_shell(body: str) -> str:
     return (
         "\\begin{table}[htbp]\n\\centering\n"
-        "\\caption{Decision variables and key performance indicators before and after optimization "
-        "(mean $\\pm$ std; 95\\,\\% confidence intervals in brackets; $N = 1000$ Monte Carlo samples).}\n"
+        "\\caption{Decision variables and key performance indicators of the as-is operation, the nominal set-points and "
+        "the compromise design (mean $\\pm$ std; 95\\,\\% confidence intervals in brackets; $N = 1000$ Monte Carlo "
+        "samples; $P_{sustainable}$ as defined in the 2019 study).}\n"
         "\\label{tab:summary}\n"
-        "\\begin{tabular}{llcc}\n\\toprule\n"
-        " & Units & Baseline & Optimized \\\\\n\\midrule\n"
+        "\\begin{tabular}{llccc}\n\\toprule\n"
+        " & Units & As-is & Nominal & Compromise \\\\\n\\midrule\n"
         f"{body}\n"
         "\\bottomrule\n\\end{tabular}\n\\end{table}\n"
     )
@@ -390,16 +407,19 @@ def _table_shell(body: str) -> str:
 def _policy_rows(summary: dict[str, Any]) -> list[str]:
     rows = []
     for key, (symbol, units) in POLICY_LABELS.items():
-        base, opt = summary["baseline"]["policy"][key], summary["optimal"]["policy"][key]
-        rows.append(f"{symbol} & {units} & {base:.3g} & {opt:.3g} \\\\")
+        cells = []
+        for name in TABLE_DESIGNS:
+            policy = summary.get(name, {}).get("policy")
+            cells.append("random" if policy is None else f"{policy[key]:.3g}")
+        rows.append(f"{symbol} & {units} & " + " & ".join(cells) + " \\\\")
     return rows
 
 
 def _kpi_rows(summary: dict[str, Any]) -> list[str]:
     rows = []
     for key, (symbol, units) in KPI_LABELS.items():
-        cells = [_stat_cell(summary[name]["indicators"][key]) for name in ("baseline", "optimal")]
-        rows.append(f"{symbol} & {units} & {cells[0]} & {cells[1]} \\\\")
+        cells = [_stat_cell(summary[name]["indicators"][key]) for name in TABLE_DESIGNS if name in summary]
+        rows.append(f"{symbol} & {units} & " + " & ".join(cells) + " \\\\")
     return rows
 
 
@@ -408,8 +428,8 @@ def _stat_cell(stats: dict[str, float]) -> str:
 
 
 def _probability_row(summary: dict[str, Any]) -> str:
-    base, opt = summary["baseline"]["p_sustainable"], summary["optimal"]["p_sustainable"]
-    return f"$P_{{sostenible}}$ & -- & {base:.3f} & {opt:.3f} \\\\"
+    cells = [f"{summary[name]['p_sustainable']:.3f}" for name in TABLE_DESIGNS if name in summary]
+    return "$P_{sustainable}$ & -- & " + " & ".join(cells) + " \\\\"
 
 
 def generate_all(mc_dir: Path, results_dir: Path, sweep_dir: Path | None = None) -> None:
@@ -425,13 +445,14 @@ def generate_all(mc_dir: Path, results_dir: Path, sweep_dir: Path | None = None)
         compromise = {key: data[key] for key in data.files}
     with np.load(mc_dir / "front.npz", allow_pickle=True) as data:
         front = {key: data[key] for key in data.files}
-    baseline = PolicyEvaluation.load(mc_dir / "baseline.npz")
-    optimal = PolicyEvaluation.load(mc_dir / "optimal.npz")
+    designs = {
+        name: PolicyEvaluation.load(mc_dir / f"{name}.npz") for name in DESIGN_LABELS if (mc_dir / f"{name}.npz").exists()
+    }
     figures_dir, tables_dir = results_dir / "figures", results_dir / "tables"
     figure_pareto(front, compromise, figures_dir)
-    figure_radar(baseline, optimal, figures_dir)
-    figure_boxplots(baseline, optimal, figures_dir)
-    figure_utility_density(baseline, optimal, figures_dir)
+    figure_radar(designs, figures_dir)
+    figure_boxplots(designs, figures_dir)
+    figure_utility_density(designs, figures_dir)
     sweeps = load_sweeps(sweep_dir) if sweep_dir is not None else {}
     if sweeps:
         figure_trigger_sweep(sweeps, figures_dir)
