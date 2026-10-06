@@ -332,23 +332,9 @@ def figure_trigger_sweep(sweeps: dict[str, dict[str, np.ndarray]], figures_dir: 
         axis.axvline(FE_PLATEAU_G_PER_L, color=NEUTRAL_COLOR, linestyle=":", linewidth=1.0)
         axis.set_xlabel(r"Fe$^{2+}$ renewal trigger [g/L]")
         axis.set_ylabel(ylabel)
-        axis.set_title(f"({'abc'[index]})" + ("" if key == "utility_pct" else " both instruments"), loc="left")
-    _plateau_note(axes[1])
-    axes[0].legend(loc="center left", fontsize=7)
+        axis.set_title(f"({'abc'[index]})", loc="left")
+    figure.legend(loc="outside lower center", ncol=len(sweeps), fontsize=7.5)
     return save_figure(figure, figures_dir, "figure5_trigger_sweep")
-
-
-def _plateau_note(axis: Axes) -> None:
-    top = axis.get_ylim()[1]
-    axis.annotate(
-        "Fe$^{2+}$ plateau:\nno renewal beyond",
-        xy=(FE_PLATEAU_G_PER_L, top),
-        xytext=(5, -4),
-        textcoords="offset points",
-        fontsize=7,
-        color="#555555",
-        va="top",
-    )
 
 
 def load_sweeps(sweep_dir: Path) -> dict[str, dict[str, np.ndarray]]:
@@ -360,7 +346,7 @@ def load_sweeps(sweep_dir: Path) -> dict[str, dict[str, np.ndarray]]:
     Returns:
         Sweep tables keyed by instrument label; empty when no sweep file exists.
     """
-    files = (("Published AAE (limiting reagent)", "trigger_sweep.npz"), ("Fed-basis AAE", "trigger_sweep_fedae.npz"))
+    files = (("Published AAE (limiting reagent)", "trigger_sweep.npz"), ("Fed-reagent AAE", "trigger_sweep_fedae.npz"))
     sweeps: dict[str, dict[str, np.ndarray]] = {}
     for label, name in files:
         if (sweep_dir / name).exists():
