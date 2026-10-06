@@ -141,7 +141,7 @@ def test_prepare_selection_rejects_a_front_without_feasible_designs(tmp_path: Pa
         mcdm.prepare_selection(run_dir, tmp_path / "out", front_items=1, n_jobs=1)
 
 
-def test_no_backsliding_veto_excludes_backsliding_designs(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_reservation_level_screening_excludes_backsliding_designs(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     from src.optimization import mcdm
 
     run_dir = _finished_tiny_run(tmp_path / "run")

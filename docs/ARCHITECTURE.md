@@ -300,7 +300,7 @@ front_evaluation.reevaluate_front(x, scenario, base_seed, n_samples, items, n_jo
 mcdm.prepare_selection(run_dir, out_dir, front_items=FULL_YEAR_ITEMS, n_jobs, weights=None,
                        cost_scenario=None, no_backsliding=True) -> CompromiseResult
 #   re-evaluates the front at the reporting budget and selects among ELIGIBLE designs: feasible AND, with the
-#   default no-backsliding veto, mean V_l-poll and V_WT not above the as-is operation (policy=None, same CRN seeds).
+#   default reservation-level screening, mean V_l-poll and V_WT not above the as-is operation (policy=None, same CRN seeds).
 #   front.npz carries f/f_mean/g/eligible/asis_f and raw_material_masses_kg (+ baseline_*) for the sensitivities.
 #   HdgRobustProblem/evaluate_policy/reevaluate_front accept fed_atom_economy (instrument sensitivity: pickling AAE
 #   over rust share + HCl actually charged); RunConfig.fed_atom_economy names the run dir nsga2<scenario>_fedae_seed<seed>.

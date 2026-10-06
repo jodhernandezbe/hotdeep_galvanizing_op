@@ -88,9 +88,9 @@ COM_SCALE: Final = 1e6
 
 
 def figure_pareto(front: dict[str, np.ndarray], compromise: dict[str, Any], figures_dir: Path) -> list[Path]:
-    """Figure 1: Pareto projection E[U_P] vs E[COM] with the vetoed arm, in full view and zoomed on the eligible set.
+    """Figure 1: Pareto projection E[U_P] vs E[COM] with the screened-out arm, in full view and zoomed on the eligible set.
 
-    Eligible designs are colored by E[V_l-poll]; designs excluded by the no-backsliding veto are drawn as hollow
+    Eligible designs are colored by E[V_l-poll]; designs screened out by the reservation levels are drawn as hollow
     grey crosses so the arm the published utility rewards (frequent pickling renewal) stays visible.
 
     Args:
@@ -107,7 +107,7 @@ def figure_pareto(front: dict[str, np.ndarray], compromise: dict[str, Any], figu
     for axis, mask in ((full, np.ones_like(eligible)), (zoom, eligible)):
         scatter = _pareto_scatter(axis, objectives[eligible], objectives[eligible, 2].min(), objectives[eligible, 2].max())
         if (~eligible & mask).any():
-            _vetoed_scatter(axis, objectives[~eligible & mask])
+            _screened_scatter(axis, objectives[~eligible & mask])
         _reference_points(axis, front["asis_f"], front["baseline_f_mean"], best)
         axis.set_xlabel(r"$\mathrm{E}[U_P]$ [-]")
     full.set_ylabel(r"$\mathrm{E}[\mathrm{COM}]$ [$10^6$ USD/yr]")
@@ -146,7 +146,7 @@ def _pareto_scatter(axis: Axes, front: np.ndarray, vmin: float, vmax: float) -> 
     )
 
 
-def _vetoed_scatter(axis: Axes, front: np.ndarray) -> None:
+def _screened_scatter(axis: Axes, front: np.ndarray) -> None:
     axis.scatter(
         -front[:, 0],
         front[:, 1] / COM_SCALE,
@@ -155,7 +155,7 @@ def _vetoed_scatter(axis: Axes, front: np.ndarray) -> None:
         color=NEUTRAL_COLOR,
         linewidths=0.8,
         zorder=2,
-        label="Excluded by the no-backsliding veto",
+        label="Screened out (reservation levels)",
     )
 
 

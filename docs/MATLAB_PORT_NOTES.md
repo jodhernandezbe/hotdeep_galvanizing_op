@@ -174,7 +174,7 @@ Exposed by the NSGA-II stress test (2026-10-04); all faithful to the thesis and 
 2. **AAE is a limiting-reagent conversion.** Thesis eq. 2-41 specializes Ruiz-Mercado's actual atom economy to the
    limiting reagent (the incoming rust), so it cannot penalize acid overfeeding: unguarded optimization renews the
    pickling bath ~20x more, raises AAE from ~2 % to ~46 % and multiplies spent-acid volume by 7 with no U_P penalty.
-   Mitigations: the no-backsliding veto on the MCDM selection (`mcdm.prepare_selection`), and the fed-basis option
+   Mitigations: the reservation-level screening (Wierzbicki, 1980) on the MCDM selection (`mcdm.prepare_selection`), and the fed-basis option
    (`fed_atom_economy=True`): pickling AAE over rust share + HCl actually charged (FeCl2 as product). The fed basis is
    scoped to pickling; the fluxing unit keeps the thesis basis because its reacting iron arrives as an internal
    transfer (residual rust) and its chloride comes from the bath salts, so a fed denominator is not definable from

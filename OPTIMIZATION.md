@@ -108,7 +108,7 @@ P(sustainable) follows the thesis construct — U_P ~ N(mean, (U_max − mean)/3
 python -m src.optimization.run_nsga2 --seed 42 --workers 8 --cost-scenario market2025 --items 3000000 --n-mc-samples 60 --out-dir results/checkpoints_3m   # → results/checkpoints_3m/nsga2_market2025_seed42/
 python -m src.analysis.trigger_sweep --workers 8                                               # 1-D sweep of the renewal trigger → results/sweeps/
 # if interrupted: add `--resume latest` to the command above to continue from the last checkpoint
-python -m src.optimization.mcdm --run-dir results/checkpoints_final/nsga2_market2025_seed4{2,3,4} --workers 8  # pools the seeds' fronts, re-evaluates at full year, veto + selection, N=1000 → results/mc/
+python -m src.optimization.mcdm --run-dir results/checkpoints_final/nsga2_market2025_seed4{2,3,4} --workers 8  # pools the seeds' fronts, re-evaluates at full year, reservation-level screening + selection, N=1000 → results/mc/
 python -m src.optimization.price_sensitivity                                                   # from results/mc/front.npz (full year, exact COM shift, no re-simulation) → results/sensitivity/
 python -m src.optimization.weight_sensitivity                                                  # → results/sensitivity/
 python -m src.analysis.manuscript_outputs                                                      # → results/figures|tables/

@@ -281,7 +281,7 @@ def _write_summary(
 
 
 NO_BACKSLIDE_COLUMNS: Final = (2, 3)
-"""Objective columns of the no-backsliding veto: E[V_l-poll] and E[V_WT] (absolute environmental flows)."""
+"""Objective columns of the reservation-level screening: E[V_l-poll] and E[V_WT] (absolute environmental flows)."""
 
 
 def prepare_selection(
@@ -298,7 +298,7 @@ def prepare_selection(
     The search runs on a reduced simulated year whose fixed annual costs do not scale with the pieces, so objectives
     are only comparable with the deep Monte Carlo after re-evaluation at the reporting (full-year) budget. With
     `no_backsliding` (the default) the compromise is restricted to designs whose mean polluted-liquid and
-    water-intake volumes do not exceed the as-is operation (thesis stochastic draws), an aspiration-level veto:
+    water-intake volumes do not exceed the as-is operation (thesis stochastic draws), a screening with reservation levels (Wierzbicki, 1980):
     the published utility is insensitive to absolute volumes, so an unguarded selection can trade them away.
 
     Several run directories (independent seeds of the same problem) are pooled: their non-dominated sets are
@@ -312,13 +312,13 @@ def prepare_selection(
         n_jobs: joblib workers.
         weights: Objective weights; FAHP-derived defaults when None.
         cost_scenario: Cost scenario of the re-evaluation; the one the search used when None.
-        no_backsliding: Apply the veto on `NO_BACKSLIDE_COLUMNS` against the as-is operation.
+        no_backsliding: Apply the reservation-level screening on `NO_BACKSLIDE_COLUMNS` against the as-is operation.
 
     Returns:
         The compromise computed on the re-evaluated front.
 
     Raises:
-        ValueError: If no re-evaluated design satisfies the constraints (and the veto, when active), or if the
+        ValueError: If no re-evaluated design satisfies the constraints (and the screening, when active), or if the
             pooled runs do not share scenario, budget and instrument.
     """
     checkpoints = [load_checkpoint(path) for path in _as_run_dirs(run_dir)]
@@ -373,7 +373,7 @@ def _eligible_mask(summary: BatchSummary, asis_f: np.ndarray | None) -> np.ndarr
         for column in NO_BACKSLIDE_COLUMNS:
             eligible &= summary.mean_objectives[:-1, column] <= asis_f[column]
     if not eligible.any():
-        message = "No design of the front is feasible" + ("" if asis_f is None else " under the no-backsliding veto")
+        message = "No design of the front is feasible" + ("" if asis_f is None else " under the reservation-level screening")
         logger.error(message)
         raise ValueError(message)
     return eligible
@@ -421,7 +421,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--front-items", type=int, default=FULL_YEAR_ITEMS)
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--cost-scenario", type=str, default=None, choices=sorted(COST_SCENARIOS))
-    parser.add_argument("--no-veto", action="store_true", help="Disable the no-backsliding veto on the selection")
+    parser.add_argument("--no-screening", action="store_true", help="Disable the reservation-level screening of the selection")
     return parser.parse_args()
 
 
@@ -431,7 +431,7 @@ def main() -> None:
     config = load_checkpoint(args.run_dir[0])["config"]
     scenario = args.cost_scenario or config["cost_scenario"]
     compromise = prepare_selection(
-        args.run_dir, args.out_dir, args.front_items, args.workers, cost_scenario=scenario, no_backsliding=not args.no_veto
+        args.run_dir, args.out_dir, args.front_items, args.workers, cost_scenario=scenario, no_backsliding=not args.no_screening
     )
     logger.info("Compromise: x=%s, f=%s, mu=%.4f", compromise.x, compromise.f, compromise.overall)
     characterize_designs(
