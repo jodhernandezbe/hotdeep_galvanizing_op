@@ -131,3 +131,6 @@ results/
 
 # Manuscript (author's working material, kept out of the repository)
 manuscript/
+
+# Result snapshots of the optimization campaigns (regenerable; see OPTIMIZATION.md)
+results_*/
