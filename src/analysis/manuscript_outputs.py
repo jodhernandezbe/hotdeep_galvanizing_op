@@ -240,7 +240,7 @@ def figure_boxplots(designs: dict[str, PolicyEvaluation], figures_dir: Path) -> 
         axis.set_ylabel(label)
     handles = [Rectangle((0, 0), 1, 1, facecolor=DESIGN_COLORS[name], alpha=0.6) for name in designs]
     labels = [DESIGN_LABELS[name] for name in designs]
-    figure.legend(handles, labels, loc="lower center", ncol=len(designs), bbox_to_anchor=(0.5, -0.04))
+    figure.legend(handles, labels, loc="outside lower center", ncol=len(designs))
     return save_figure(figure, figures_dir, "figure3_critical_stage_boxplots")
 
 
