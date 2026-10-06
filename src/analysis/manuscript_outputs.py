@@ -28,7 +28,7 @@ from src.analysis.plot_style import (
     save_figure,
 )
 from src.optimization.evaluation import PolicyEvaluation
-from src.optimization.mcdm import SUSTAINABILITY_THRESHOLD_PCT, pareto_mask, utility_pct
+from src.optimization.mcdm import SUSTAINABILITY_THRESHOLD_PCT, utility_pct
 from src.sustainability.greenscope import Indicator
 from src.sustainability.streams import UnitProcess
 
@@ -83,30 +83,47 @@ KPI_LABELS: Final = {
 COM_SCALE: Final = 1e6
 
 
-def figure_pareto(front_f: np.ndarray, compromise: dict[str, Any], figures_dir: Path) -> list[Path]:
-    """Figure 1: Pareto projection E[U_P] vs E[COM], colored by V_l-poll, sized by V_WT.
+def figure_pareto(front: dict[str, np.ndarray], compromise: dict[str, Any], figures_dir: Path) -> list[Path]:
+    """Figure 1: Pareto projection E[U_P] vs E[COM] with the vetoed arm, in full view and zoomed on the eligible set.
+
+    Eligible designs are colored by E[V_l-poll]; designs excluded by the no-backsliding veto are drawn as hollow
+    grey crosses so the arm the published utility rewards (frequent pickling renewal) stays visible.
 
     Args:
-        front_f: Objectives of the non-dominated feasible designs on the reporting (full-year) basis, shape (n, 4).
-        compromise: Arrays of `compromise.npz` (f, utopia, nadir).
+        front: Arrays of `front.npz` (x, f_mean, eligible, asis_f, baseline_f_mean).
+        compromise: Arrays of `compromise.npz` (x).
         figures_dir: Destination directory.
 
     Returns:
         Written file paths.
     """
-    front = np.atleast_2d(front_f)
-    figure, axis = plt.subplots(figsize=(4.8, 3.6))
-    scatter = _pareto_scatter(axis, front)
-    _pareto_annotations(axis, compromise)
-    figure.colorbar(scatter, ax=axis, label=r"$\mathrm{E}[V_{l\mathrm{-}poll}]$ [m$^3$]")
-    axis.set_xlabel(r"$\mathrm{E}[U_P]$ [-]")
-    axis.set_ylabel(r"$\mathrm{E}[\mathrm{COM}]$ [$10^6$ USD/yr]")
-    axis.set_title("Pareto front projection")
-    axis.legend(loc="best")
+    objectives, eligible = front["f_mean"], front["eligible"].astype(bool)
+    best = objectives[_compromise_row(front["x"], compromise["x"])]
+    figure, (full, zoom) = plt.subplots(1, 2, figsize=(7.2, 3.4))
+    for axis, mask in ((full, np.ones_like(eligible)), (zoom, eligible)):
+        scatter = _pareto_scatter(axis, objectives[eligible], objectives[eligible, 2].min(), objectives[eligible, 2].max())
+        if (~eligible & mask).any():
+            _vetoed_scatter(axis, objectives[~eligible & mask])
+        _reference_points(axis, front["asis_f"], front["baseline_f_mean"], best)
+        axis.set_xlabel(r"$\mathrm{E}[U_P]$ [-]")
+    full.set_ylabel(r"$\mathrm{E}[\mathrm{COM}]$ [$10^6$ USD/yr]")
+    full.set_title("(a) Whole non-dominated set")
+    zoom.set_title("(b) Designs eligible under the veto")
+    figure.colorbar(scatter, ax=[full, zoom], label=r"$\mathrm{E}[V_{l\mathrm{-}poll}]$ [m$^3$/yr]", shrink=0.9)
+    full.legend(loc="upper left", fontsize=7)
     return save_figure(figure, figures_dir, "figure1_pareto")
 
 
-def _pareto_scatter(axis: Axes, front: np.ndarray) -> Any:
+def _compromise_row(x: np.ndarray, compromise_x: np.ndarray) -> int:
+    matches = np.where(np.all(np.isclose(x, compromise_x), axis=1))[0]
+    if matches.size == 0:
+        message = "The compromise design is not a row of front.npz"
+        logger.error(message)
+        raise ValueError(message)
+    return int(matches[0])
+
+
+def _pareto_scatter(axis: Axes, front: np.ndarray, vmin: float, vmax: float) -> Any:
     sizes = _size_scale(front[:, 3])
     return axis.scatter(
         -front[:, 0],
@@ -114,11 +131,26 @@ def _pareto_scatter(axis: Axes, front: np.ndarray) -> Any:
         c=front[:, 2],
         s=sizes,
         cmap=SEQUENTIAL_CMAP,
+        vmin=vmin,
+        vmax=vmax,
         edgecolors="white",
         linewidths=0.4,
         alpha=0.9,
         zorder=3,
-        label=r"Non-dominated solutions (size $\propto \mathrm{E}[V_{WT}]$)",
+        label=r"Eligible (size $\propto \mathrm{E}[V_{WT}]$)",
+    )
+
+
+def _vetoed_scatter(axis: Axes, front: np.ndarray) -> None:
+    axis.scatter(
+        -front[:, 0],
+        front[:, 1] / COM_SCALE,
+        marker="x",
+        s=22,
+        color=NEUTRAL_COLOR,
+        linewidths=0.8,
+        zorder=2,
+        label="Excluded by the no-backsliding veto",
     )
 
 
@@ -128,10 +160,18 @@ def _size_scale(values: np.ndarray) -> np.ndarray:
     return 12.0 + 68.0 * normalized
 
 
-def _pareto_annotations(axis: Axes, compromise: dict[str, Any]) -> None:
-    utopia, nadir, best = compromise["utopia"], compromise["nadir"], compromise["f"]
-    axis.scatter(-utopia[0], utopia[1] / COM_SCALE, marker="P", s=70, color="#009E73", zorder=4, label="Utopia point")
-    axis.scatter(-nadir[0], nadir[1] / COM_SCALE, marker="X", s=70, color=NEUTRAL_COLOR, zorder=4, label="Nadir point")
+def _reference_points(axis: Axes, asis: np.ndarray, nominal: np.ndarray, best: np.ndarray) -> None:
+    axis.scatter(-asis[0], asis[1] / COM_SCALE, marker="^", s=60, color=BASELINE_COLOR, zorder=4, label="As-is operation")
+    axis.scatter(
+        -nominal[0],
+        nominal[1] / COM_SCALE,
+        marker="s",
+        s=45,
+        facecolors="none",
+        edgecolors=BASELINE_COLOR,
+        zorder=4,
+        label="Nominal set-points",
+    )
     axis.scatter(
         -best[0],
         best[1] / COM_SCALE,
@@ -245,6 +285,77 @@ def _density_curve(axis: Axes, values: np.ndarray, label: str, color: str) -> No
     axis.fill_between(grid[exceed], density(grid[exceed]), color=color, alpha=0.25)
 
 
+SWEEP_PANELS: Final = (
+    ("utility_pct", r"$U_P$ [% of $U_{P,max}$]"),
+    ("polluted_liquid_m3", r"$\mathrm{E}[V_{l\mathrm{-}poll}]$ [m$^3$/yr]"),
+    ("com_usd", r"$\mathrm{E}[\mathrm{COM}]$ [$10^6$ USD/yr]"),
+)
+FE_PLATEAU_G_PER_L: Final = 130.0
+
+
+def figure_trigger_sweep(sweeps: dict[str, dict[str, np.ndarray]], figures_dir: Path) -> list[Path]:
+    """Figure 5: response of utility, polluted liquid and cost to the pickling renewal trigger (one-dimensional sweep).
+
+    Only the utility depends on the atom-economy basis, so panel (a) shows one line per instrument while panels (b)
+    and (c), identical for both instruments, show a single series.
+
+    Args:
+        sweeps: Sweep tables keyed by instrument label (e.g. "Published AAE", "Fed-basis AAE"), each with the
+            arrays of `trigger_sweep.npz`.
+        figures_dir: Destination directory.
+
+    Returns:
+        Written file paths.
+    """
+    figure, axes = plt.subplots(1, len(SWEEP_PANELS), figsize=(7.2, 2.7))
+    first = next(iter(sweeps.values()))
+    for index, (axis, (key, ylabel)) in enumerate(zip(axes, SWEEP_PANELS)):
+        if key == "utility_pct":
+            for (label, sweep), color in zip(sweeps.items(), (BASELINE_COLOR, OPTIMIZED_COLOR)):
+                axis.plot(sweep["triggers"], sweep[key], marker="o", markersize=3.5, color=color, label=label)
+        else:
+            values = first[key] / COM_SCALE if key == "com_usd" else first[key]
+            axis.plot(first["triggers"], values, marker="o", markersize=3.5, color="#555555")
+        axis.axvline(FE_PLATEAU_G_PER_L, color=NEUTRAL_COLOR, linestyle=":", linewidth=1.0)
+        axis.set_xlabel(r"Fe$^{2+}$ renewal trigger [g/L]")
+        axis.set_ylabel(ylabel)
+        axis.set_title(f"({'abc'[index]})" + ("" if key == "utility_pct" else " both instruments"), loc="left")
+    _plateau_note(axes[1])
+    axes[0].legend(loc="center left", fontsize=7)
+    return save_figure(figure, figures_dir, "figure5_trigger_sweep")
+
+
+def _plateau_note(axis: Axes) -> None:
+    top = axis.get_ylim()[1]
+    axis.annotate(
+        "Fe$^{2+}$ plateau:\nno renewal beyond",
+        xy=(FE_PLATEAU_G_PER_L, top),
+        xytext=(5, -4),
+        textcoords="offset points",
+        fontsize=7,
+        color="#555555",
+        va="top",
+    )
+
+
+def load_sweeps(sweep_dir: Path) -> dict[str, dict[str, np.ndarray]]:
+    """Read the trigger sweeps present in a directory.
+
+    Args:
+        sweep_dir: Directory written by `src.analysis.trigger_sweep`.
+
+    Returns:
+        Sweep tables keyed by instrument label; empty when no sweep file exists.
+    """
+    files = (("Published AAE (limiting reagent)", "trigger_sweep.npz"), ("Fed-basis AAE", "trigger_sweep_fedae.npz"))
+    sweeps: dict[str, dict[str, np.ndarray]] = {}
+    for label, name in files:
+        if (sweep_dir / name).exists():
+            with np.load(sweep_dir / name) as data:
+                sweeps[label] = {key: data[key] for key in data.files}
+    return sweeps
+
+
 def table_summary(summary: dict[str, Any], tables_dir: Path) -> Path:
     """Table 1: LaTeX summary of decision variables, KPIs and P_sostenible.
 
@@ -301,46 +412,43 @@ def _probability_row(summary: dict[str, Any]) -> str:
     return f"$P_{{sostenible}}$ & -- & {base:.3f} & {opt:.3f} \\\\"
 
 
-def generate_all(mc_dir: Path, results_dir: Path) -> None:
+def generate_all(mc_dir: Path, results_dir: Path, sweep_dir: Path | None = None) -> None:
     """Regenerate every manuscript output from persisted results only.
 
     Args:
         mc_dir: Directory with `front.npz`, `compromise.npz`, baseline/optimal `.npz` and `summary.json`.
         results_dir: Root receiving `figures/` and `tables/`.
+        sweep_dir: Directory with the trigger sweeps; figure 5 is skipped when None or empty.
     """
     apply_paper_style()
     with np.load(mc_dir / "compromise.npz") as data:
         compromise = {key: data[key] for key in data.files}
-    front_f = _reporting_front(mc_dir)
+    with np.load(mc_dir / "front.npz", allow_pickle=True) as data:
+        front = {key: data[key] for key in data.files}
     baseline = PolicyEvaluation.load(mc_dir / "baseline.npz")
     optimal = PolicyEvaluation.load(mc_dir / "optimal.npz")
     figures_dir, tables_dir = results_dir / "figures", results_dir / "tables"
-    figure_pareto(front_f, compromise, figures_dir)
+    figure_pareto(front, compromise, figures_dir)
     figure_radar(baseline, optimal, figures_dir)
     figure_boxplots(baseline, optimal, figures_dir)
     figure_utility_density(baseline, optimal, figures_dir)
+    sweeps = load_sweeps(sweep_dir) if sweep_dir is not None else {}
+    if sweeps:
+        figure_trigger_sweep(sweeps, figures_dir)
+    else:
+        logger.warning("No trigger sweep found; figure 5 skipped")
     table_summary(json.loads((mc_dir / "summary.json").read_text()), tables_dir)
-
-
-def _reporting_front(mc_dir: Path) -> np.ndarray:
-    with np.load(mc_dir / "front.npz") as data:
-        objectives = data["f"]
-        feasible = data["eligible"] if "eligible" in data.files else (data["g"] <= 0).all(axis=1)
-    if not feasible.any():
-        logger.warning("No eligible design in front.npz; plotting the whole non-dominated set")
-        feasible[:] = True
-    candidates = objectives[feasible]
-    return candidates[pareto_mask(candidates)]
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate the manuscript figures and tables from persisted results")
     parser.add_argument("--mc-dir", type=Path, default=Path("results/mc"))
     parser.add_argument("--results-dir", type=Path, default=Path("results"))
+    parser.add_argument("--sweep-dir", type=Path, default=Path("results/sweeps"))
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     arguments = _parse_args()
-    generate_all(arguments.mc_dir, arguments.results_dir)
+    generate_all(arguments.mc_dir, arguments.results_dir, arguments.sweep_dir)

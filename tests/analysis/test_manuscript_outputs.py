@@ -11,9 +11,11 @@ import shutil
 import subprocess  # nosec B404  (used only to drive pdflatex on the generated table)
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from src.analysis.manuscript_outputs import generate_all, table_summary
+from src.analysis.trigger_sweep import save_sweep, sweep_renewal_trigger
 from src.optimization.mcdm import characterize_designs, select_compromise
 from src.optimization.run_nsga2 import RunConfig, run
 from src.process.operating_policy import OperatingPolicy
@@ -24,6 +26,7 @@ EXPECTED_FIGURES = (
     "figure2_radar",
     "figure3_critical_stage_boxplots",
     "figure4_utility_density",
+    "figure5_trigger_sweep",
 )
 
 
@@ -42,6 +45,8 @@ def stub_results(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
     run_dir = run(config)
     mc_dir = root / "mc"
     _make_mcdm_outputs(run_dir, mc_dir)
+    sweep = sweep_renewal_trigger(np.array([60.0, 150.0]), base_seed=4, n_samples=2, items=50_000)
+    save_sweep(sweep, root / "sweeps")
     return run_dir, mc_dir
 
 
@@ -61,7 +66,7 @@ def _make_mcdm_outputs(run_dir: Path, mc_dir: Path) -> None:
 
 def test_generate_all_writes_every_output(stub_results: tuple[Path, Path], tmp_path: Path) -> None:
     _, mc_dir = stub_results
-    generate_all(mc_dir, tmp_path)
+    generate_all(mc_dir, tmp_path, mc_dir.parent / "sweeps")
     for stem in EXPECTED_FIGURES:
         assert (tmp_path / "figures" / f"{stem}.pdf").exists()
         assert (tmp_path / "figures" / f"{stem}.png").exists()
